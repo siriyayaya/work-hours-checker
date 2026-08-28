@@ -86,17 +86,21 @@
   }
   .sim-result .hint.ok .hl{color:var(--ok);}
 
-  table{width:100%;table-layout:fixed;border-collapse:collapse;background:var(--card);border-radius:18px;overflow:hidden;box-shadow:var(--shadow);font-size:13px;}
-  thead th{background:#f7f6fb;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:11px 6px;text-align:center;position:sticky;top:0;font-weight:700;}
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:18px;box-shadow:var(--shadow);background:var(--card);}
+  .table-hint{display:none;font-size:11.5px;color:var(--muted);margin-bottom:6px;}
+  table{width:100%;min-width:760px;table-layout:fixed;border-collapse:collapse;background:var(--card);font-size:13px;}
+  thead th{background:#f7f6fb;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:11px 6px;text-align:center;font-weight:700;}
   tbody td{padding:9px 6px;text-align:center;border-top:1px solid var(--line);}
   tbody tr.weekend{background:#faf9fd;color:var(--muted);}
   tbody tr.other-month{opacity:.45;}
   tbody tr.missing{background:var(--warn-soft);}
   tbody tr.planned td{background:var(--accent-soft);border-top:1px solid var(--accent);border-bottom:1px solid var(--accent);}
   tbody tr.today-row td{background:var(--accent-soft);font-weight:800;}
-  td.flag-cell{padding:9px 4px;}
+  td.flag-cell{padding:6px 4px;vertical-align:middle;}
+  td.flag-cell .unplug-tag{margin-top:3px;}
   .today-badge{display:inline-block;background:linear-gradient(135deg,var(--accent2),var(--accent));color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px;white-space:nowrap;}
   .plan-badge{display:inline-block;margin-left:6px;background:var(--accent);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;vertical-align:middle;}
+  .unplug-tag{display:inline-block;background:var(--accent2);color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px;white-space:nowrap;}
   .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;}
   .badge.ok{background:var(--ok-soft);color:var(--ok);}
   .badge.warn{background:var(--warn-soft);color:var(--warn);}
@@ -104,6 +108,13 @@
   .badge.blue{background:var(--accent-soft);color:var(--accent);}
   .note{font-size:11.5px;color:var(--muted);}
   .proj{font-size:11px;color:var(--muted);font-style:italic;}
+  .time-select-pair{display:inline-flex;align-items:center;gap:2px;background:var(--accent-soft);border-radius:999px;padding:2px 6px;font-weight:700;}
+  .row-time-select{border:none;background:transparent;color:var(--accent);font-weight:800;font-size:13px;padding:2px 0;cursor:pointer;}
+  .row-time-select:focus{outline:none;}
+  td .time-select-pair{padding:2px 4px;}
+  td .row-time-select{font-size:12px;}
+  @media (max-width:700px){ .table-hint{display:block;} }
+  .footnote{font-size:11.5px;color:var(--muted);margin-top:8px;}
 
   #resetBtn{
     margin-top:20px;background:#fff;border:1.5px solid var(--ink);border-radius:999px;
@@ -149,8 +160,7 @@
         이미 재택으로 예정된 날은 빼고, 출근하는 평일만 대상으로 계산해요.)
       </div>
       <div id="mandatoryStartWrap" class="mandatory-wrap">
-        <span id="mandatoryStartDesc">언플러그/패스가 있는 날짜를 대비해 출근시각을 미리 설정해보세요:</span>
-        <input type="time" id="mandatoryStart" value="10:00" style="padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-size:13px;background:#fff;">
+        <span id="mandatoryStartDesc"></span>
       </div>
       <div class="plan-form">
         <input type="date" id="planDate">
@@ -177,19 +187,23 @@
     </div>
 
     <h2>일별 상세</h2>
-    <table>
-      <colgroup>
-        <col style="width:6%"><col style="width:15%"><col style="width:9%"><col style="width:9%">
-        <col style="width:12%"><col style="width:12%"><col style="width:37%">
-      </colgroup>
-      <thead>
-        <tr>
-          <th></th><th>날짜</th><th>출근</th><th>퇴근</th>
-          <th>실제/예상(h)</th><th>누적차이(h)</th><th>상태</th>
-        </tr>
-      </thead>
-      <tbody id="tbody"></tbody>
-    </table>
+    <div class="table-hint">👉 좌우로 스크롤해서 전체 표를 볼 수 있어요</div>
+    <div class="table-scroll">
+      <table>
+        <colgroup>
+          <col style="width:54px"><col style="width:118px"><col style="width:92px"><col style="width:92px">
+          <col style="width:118px"><col style="width:92px"><col style="width:194px">
+        </colgroup>
+        <thead>
+          <tr>
+            <th></th><th>날짜</th><th>출근</th><th>퇴근</th>
+            <th>실제/예상(h)</th><th>누적차이(h)</th><th>상태</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="footnote">* 예상 시간 계산 시 점심시간(12~13시)과 겹치는 만큼은 자동으로 제외돼요.</div>
 
     <button id="resetBtn">다른 파일 넣기</button>
   </div>
@@ -381,7 +395,39 @@ resetBtn.addEventListener('click', () => {
 planType.addEventListener('change', () => {
   planCustom.style.display = planType.value === 'custom' ? 'inline-block' : 'none';
 });
-document.getElementById('mandatoryStart').addEventListener('change', () => { renderSimAndTable(); });
+// 시:분(5분 단위) 드롭다운 한 쌍을 만든다. role="checkout"(오늘 퇴근) / "arrival"(언플러그 날짜별 출근) / "default"(언플러그 기본 출근시각)
+function timeSelectHTML(role, date, value){
+  const [vh, vm] = (value || '10:00').split(':');
+  let hourOpts = '';
+  for (let h = 0; h < 24; h++){
+    const hh = String(h).padStart(2,'0');
+    hourOpts += `<option value="${hh}"${hh===vh?' selected':''}>${hh}</option>`;
+  }
+  let minOpts = '';
+  ['00','05','10','15','20','25','30','35','40','45','50','55'].forEach(mm => {
+    minOpts += `<option value="${mm}"${mm===vm?' selected':''}>${mm}</option>`;
+  });
+  return `<span class="time-select-pair"><select class="row-time-select" data-role="${role}" data-part="hour" data-date="${date||''}">${hourOpts}</select>:<select class="row-time-select" data-role="${role}" data-part="minute" data-date="${date||''}">${minOpts}</select></span>`;
+}
+
+function handleTimeSelectChange(e){
+  if (!state) return;
+  const t = e.target;
+  if (!t.classList.contains('row-time-select')) return;
+  const pair = t.closest('.time-select-pair');
+  const hourSel = pair.querySelector('[data-part="hour"]');
+  const minSel = pair.querySelector('[data-part="minute"]');
+  const value = `${hourSel.value}:${minSel.value}`;
+  const role = t.dataset.role;
+  const date = t.dataset.date;
+  if (role === 'checkout') state.todayCheckoutTime = value;
+  else if (role === 'partialCheckout') state.partialCheckoutOverrides[date] = value;
+  else if (role === 'arrival') state.mandatoryStartOverrides[date] = value;
+  else if (role === 'default') state.mandatoryDefaultStart = value;
+  renderSimAndTable();
+}
+document.getElementById('tbody').addEventListener('change', handleTimeSelectChange);
+document.getElementById('mandatoryStartWrap').addEventListener('change', handleTimeSelectChange);
 document.getElementById('addPlanBtn').addEventListener('click', () => {
   const dateEl = document.getElementById('planDate');
   const date = dateEl.value;
@@ -415,6 +461,13 @@ function handleFile(file){
     }
   };
   reader.readAsArrayBuffer(file);
+}
+
+// 두 시각(소수 시간) 사이 실제 근무시간. 12~13시 점심시간과 겹치는 만큼은 근무시간에서 뺀다.
+function workHoursBetween(startHour, endHour){
+  const LUNCH_START = 12, LUNCH_END = 13;
+  const overlap = Math.max(0, Math.min(endHour, LUNCH_END) - Math.max(startHour, LUNCH_START));
+  return Math.max(0, endHour - startHour - overlap);
 }
 
 function parseAndBuildState(rows){
@@ -494,7 +547,12 @@ function parseAndBuildState(rows){
   const avgStartHour = startTimes.length ? startTimes.reduce((a,b)=>a+b,0) / startTimes.length : 10;
 
   state = { entries, targetYm, ty, tm, targetWeekdayCount, targetHours: targetWeekdayCount * 8,
-            hasHolidayData, holidayDatesInMonth, today, todayStr, avgStartHour };
+            hasHolidayData, holidayDatesInMonth, today, todayStr, avgStartHour,
+            todayCheckoutTime: null, mandatoryStartOverrides: {},
+            // 언플러그 기본 출근시각: 보통 출근시각(10:00)으로 시작하고, 특정 날짜만 다르게 출근해야 하면
+            // 그 날짜만 따로 조정하면 된다.
+            mandatoryDefaultStart: '10:00',
+            partialCheckoutOverrides: {} };
 
   document.getElementById('cMonth').textContent = `${ty}년 ${tm}월`;
   document.getElementById('planDate').min = `${targetYm}-01`;
@@ -544,43 +602,14 @@ function minutesPart(hDecimal){
   const mm = totalMinutes % 60;
   return hh > 0 ? `${hh}시간 ${mm}분` : `${mm}분`;
 }
-// e.g. 0.483 -> "0.48시간 (29분)"
-function hoursDetail(hDecimal){
-  return `${Math.abs(hDecimal).toFixed(2)}시간 (${minutesPart(hDecimal)})`;
-}
-
 function renderSimAndTable(){
   if (!state) return;
   const { entries } = state;
 
-  // ---- "오늘까지 실제" cards (uses only real recorded hours, no assumptions) ----
+  // "오늘까지 실제" 누적치 - 일반 날짜는 실제 기록만(가정 없음), 언플러그/패스 날짜는 스프레드시트에
+  // 블록 시간만 기록되고 오전 근무는 애초에 기록되지 않으므로 그 재구성값을 그대로 실제치로 인정한다.
   let cumActualToDate = 0;
   const missing = [];
-  entries.forEach(en => {
-    if (en.isPast || en.isToday) cumActualToDate += en.recordedHours;
-    if (en.isPast && !en.isWeekend && !en.isHoliday && en.recordedHours === 0 && !en.status){
-      missing.push(en.dateStr);
-    }
-  });
-  const remainToday = state.targetHours - cumActualToDate;
-  const pct = state.targetHours > 0 ? Math.min(100, Math.max(0, (cumActualToDate / state.targetHours) * 100)) : 0;
-
-  document.getElementById('cTarget').textContent = `${state.targetHours.toFixed(0)}시간`;
-  document.getElementById('cActual').textContent = `${cumActualToDate.toFixed(2)}시간`;
-  document.getElementById('cRemain').innerHTML = remainToday > 0
-    ? `${minutesPart(remainToday)}`
-    : `<span style="color:var(--ok)">✓ ${minutesPart(remainToday)} 초과</span>`;
-  document.getElementById('progressLabel').textContent = `진행률 (${cumActualToDate.toFixed(1)}h / ${state.targetHours}h)`;
-  document.getElementById('progressPct').textContent = `${pct.toFixed(0)}%`;
-  document.getElementById('barFill').style.width = `${pct}%`;
-
-  const missingNotice = document.getElementById('missingNotice');
-  if (missing.length){
-    missingNotice.style.display = 'block';
-    missingNotice.textContent = `⚠ 근태 기록이 없는 지난 평일이 ${missing.length}일 있습니다: ${missing.join(', ')}`;
-  } else {
-    missingNotice.style.display = 'none';
-  }
 
   // ---- month-end projection (includes assumed 8h on unrecorded FUTURE weekdays + plan deductions) ----
   let cumTarget = 0, cumEffective = 0;
@@ -599,31 +628,74 @@ function renderSimAndTable(){
     // 별도로 지정한 "필수 출근시각"부터 언플러그 시작 전까지를 오전 근무시간으로 계산한다.
     const partialKeywordMatch = en.status ? en.status.match(/언플러그|패스/) : null;
     const isPartialNote = !!partialKeywordMatch && en.recordedHours < 8;
+
+    // 언플러그/패스 날짜별 출근(필수 출근시각): 이 날짜에 직접 설정한 값이 있으면 그걸 쓰고, 없으면 전체 기본값을 쓴다.
+    const effectiveArrival = isPartialNote ? (state.mandatoryStartOverrides[en.dateStr] || state.mandatoryDefaultStart) : null;
+
     if (isPartialNote && !en.isPast) {
       const [, mm2, dd2] = en.dateStr.split('-');
-      upcomingPartialDates.push({ dateLabel: `${parseInt(mm2,10)}월 ${parseInt(dd2,10)}일`, keyword: partialKeywordMatch[0] });
+      upcomingPartialDates.push({ dateLabel: `${parseInt(mm2,10)}월 ${parseInt(dd2,10)}일`, keyword: partialKeywordMatch[0], arrival: effectiveArrival, rawDate: en.dateStr });
     }
     let partialMorningHours = 0;
+    let blockEndTime = null; // 언플러그/패스 구간이 끝나는 시각(메모에서 파싱) - 퇴근시각 기본값으로 사용
     if (isPartialNote) {
-      const mandatoryStartVal = document.getElementById('mandatoryStart').value; // "HH:MM"
-      const [mh, mm] = mandatoryStartVal ? mandatoryStartVal.split(':').map(Number) : [10, 0];
+      const [mh, mm] = effectiveArrival.split(':').map(Number);
       const mandatoryStartHour = mh + mm / 60;
       const timeMatch = en.status.match(/(\d{1,2}):(\d{2})\s*~\s*(\d{1,2}):(\d{2})/);
       if (timeMatch) {
         const blockStartHour = parseInt(timeMatch[1],10) + parseInt(timeMatch[2],10)/60;
-        partialMorningHours = Math.max(0, Math.round((blockStartHour - mandatoryStartHour) * 4) / 4);
+        partialMorningHours = workHoursBetween(mandatoryStartHour, blockStartHour);
+        blockEndTime = `${timeMatch[3].padStart(2,'0')}:${timeMatch[4].padStart(2,'0')}`;
       } else {
         partialMorningHours = 4; // 시간 정보를 못 찾으면 기본값
       }
     }
 
+    // 언플러그/패스 날짜의 퇴근시각을 직접 지정했으면, 오전+블록 계산 대신 출근~퇴근 실차이로 총 시간을 계산한다.
+    let partialCheckoutHours = null;
+    if (isPartialNote && state.partialCheckoutOverrides[en.dateStr]) {
+      const [ch, cm] = state.partialCheckoutOverrides[en.dateStr].split(':').map(Number);
+      const checkoutHour = ch + cm / 60;
+      const [ah, am] = effectiveArrival.split(':').map(Number);
+      const arrivalHour = ah + am / 60;
+      partialCheckoutHours = workHoursBetween(arrivalHour, checkoutHour);
+    }
+
+    // 오늘 아직 퇴근 전이면, 퇴근란에 표시된 "예상 퇴근시각"으로 예상 근무시간을 계산한다 (8시간 고정 가정 대신).
+    // 사용자가 직접 바꾸지 않았어도 화면에 보이는 기본값(18:00)을 그대로 계산에 반영한다.
+    let todayCheckoutHours = null;
+    const effectiveTodayCheckout = state.todayCheckoutTime || '18:00';
+    if (en.isToday && !isPartialNote && en.recordedHours === 0) {
+      const [ch, cm] = effectiveTodayCheckout.split(':').map(Number);
+      const checkoutHour = ch + cm / 60;
+      let startHour = null;
+      if (en.start) {
+        const sm = en.start.match(/^(\d{1,2}):(\d{2})/);
+        if (sm) startHour = parseInt(sm[1],10) + parseInt(sm[2],10)/60;
+      }
+      if (startHour === null) startHour = state.avgStartHour;
+      todayCheckoutHours = workHoursBetween(startHour, checkoutHour);
+    }
+
     let base;
     let isAssumed = false;
     if (en.isWeekend || en.isHoliday) base = 0;
-    else if (!en.isPast && isPartialNote) { base = en.recordedHours + partialMorningHours; isAssumed = true; }
+    else if (isPartialNote) {
+      base = partialCheckoutHours !== null ? partialCheckoutHours : (en.recordedHours + partialMorningHours);
+      isAssumed = true;
+    }
+    else if (todayCheckoutHours !== null) { base = todayCheckoutHours; isAssumed = true; }
     else if (en.recordedHours > 0 || en.status) base = en.recordedHours;
     else if (!en.isPast) { base = 8; isAssumed = true; }
     else base = 0; // past, missing
+
+    // "오늘까지 실제" 누적 - 과거 날짜는 위에서 구한 base(언플러그 재구성값 포함)를 그대로 인정하고,
+    // 오늘은 아직 확정 안 된 예상 퇴근시간 기반 추정치는 제외하고 실제 기록된 시간만 더한다(언플러그는 예외).
+    if (en.isPast) cumActualToDate += base;
+    else if (en.isToday) cumActualToDate += (isPartialNote ? base : en.recordedHours);
+    if (en.isPast && !en.isWeekend && !en.isHoliday && en.recordedHours === 0 && !en.status){
+      missing.push(en.dateStr);
+    }
 
     const ded = planDeductionFor(en.dateStr);
     const effective = Math.max(0, base - ded);
@@ -647,19 +719,34 @@ function renderSimAndTable(){
     if (en.isHoliday) noteText = (noteText ? noteText + ' · ' : '') + '공휴일(' + HOLIDAYS[en.dateStr] + ')';
     if (en.isLaborDay) noteText = (noteText ? noteText + ' · ' : '') + '근로자의날';
 
+    const partialLabel = partialCheckoutHours !== null
+      ? `(예상 ${base.toFixed(2)} = ${effectiveArrival}~${state.partialCheckoutOverrides[en.dateStr]})`
+      : `(예상 ${base.toFixed(2)} = 출근~언플러그전 ${partialMorningHours.toFixed(2)} + 언플러그 ${en.recordedHours})`;
     const hoursCell = isAssumed
-      ? `<span class="proj">${ded>0 ? `${base}→${effective.toFixed(1)}` : (isPartialNote ? `(예상 ${base} = 오전 ${partialMorningHours} + 언플러그 ${en.recordedHours})` : en.isToday ? `(진행중, 예상 ${base})` : `(예상 ${base})`)}</span>`
+      ? `<span class="proj">${ded>0 ? `${base.toFixed(2)}→${effective.toFixed(2)}` : (isPartialNote ? partialLabel : todayCheckoutHours !== null ? `(예상 ${base.toFixed(2)} = ${en.start||'?'}~${effectiveTodayCheckout})` : en.isToday ? `(진행중, 예상 ${base.toFixed(2)})` : `(예상 ${base.toFixed(2)})`)}</span>`
       : (ded > 0 ? `${base.toFixed(1)}→${effective.toFixed(1)}` : (en.recordedHours || (en.recordedHours===0 && (en.isWeekend||en.isHoliday)) ? base.toFixed(2) : '-'));
+
+    const startCell = (isPartialNote && !en.start)
+      ? timeSelectHTML('arrival', en.dateStr, effectiveArrival)
+      : (en.start || '-');
+
+    const checkoutCell = isPartialNote
+      ? timeSelectHTML('partialCheckout', en.dateStr, state.partialCheckoutOverrides[en.dateStr] || blockEndTime || '18:00')
+      : (en.isToday && !en.end)
+        ? timeSelectHTML('checkout', en.dateStr, state.todayCheckoutTime || '18:00')
+        : (en.end || '-');
 
     const planBadgeLabel = ded === 4 ? '반차' : ded === 2 ? '패스' : ded > 0 ? '계획' : '';
     const planBadge = ded > 0 ? `<span class="plan-badge">${planBadgeLabel} -${ded}h</span>` : '';
+    const unplugBadge = isPartialNote ? `<span class="unplug-tag">${partialKeywordMatch[0]}</span>` : '';
     const todayFlag = en.isToday ? '<span class="today-badge">오늘</span>' : '';
     const dateLabel = `${en.dateStr}(${en.weekday})` + planBadge;
 
+    const flagCellContent = (todayFlag && unplugBadge) ? `${todayFlag}<br>${unplugBadge}` : `${todayFlag}${unplugBadge}`;
     rowsHtml.push(`<tr class="${rowClass.join(' ')}">
-      <td class="flag-cell">${todayFlag}</td>
+      <td class="flag-cell">${flagCellContent}</td>
       <td class="date-cell">${dateLabel}</td>
-      <td>${en.start||'-'}</td><td>${en.end||'-'}</td>
+      <td>${startCell}</td><td>${checkoutCell}</td>
       <td>${hoursCell}</td>
       <td style="color:${diff < 0 ? 'var(--warn)' : 'var(--ok)'}">${diff >= 0 ? '+' + diff.toFixed(2) : diff.toFixed(2)}</td>
       <td class="status">${statusBadge}${noteText ? `<div class="note">${noteText}</div>` : ''}</td>
@@ -668,14 +755,34 @@ function renderSimAndTable(){
 
   document.getElementById('tbody').innerHTML = rowsHtml.join('');
 
+  const remainToday = state.targetHours - cumActualToDate;
+  const pct = state.targetHours > 0 ? Math.min(100, Math.max(0, (cumActualToDate / state.targetHours) * 100)) : 0;
+
+  document.getElementById('cTarget').textContent = `${state.targetHours.toFixed(0)}시간`;
+  document.getElementById('cActual').textContent = `${cumActualToDate.toFixed(2)}시간`;
+  document.getElementById('cRemain').innerHTML = remainToday > 0
+    ? `${minutesPart(remainToday)}`
+    : `<span style="color:var(--ok)">✓ ${minutesPart(remainToday)} 초과</span>`;
+  document.getElementById('progressLabel').textContent = `진행률 (${cumActualToDate.toFixed(1)}h / ${state.targetHours}h)`;
+  document.getElementById('progressPct').textContent = `${pct.toFixed(0)}%`;
+  document.getElementById('barFill').style.width = `${pct}%`;
+
+  const missingNotice = document.getElementById('missingNotice');
+  if (missing.length){
+    missingNotice.style.display = 'block';
+    missingNotice.textContent = `⚠ 근태 기록이 없는 지난 평일이 ${missing.length}일 있습니다: ${missing.join(', ')}`;
+  } else {
+    missingNotice.style.display = 'none';
+  }
+
   const mandatoryDescEl = document.getElementById('mandatoryStartDesc');
   if (upcomingPartialDates.length) {
-    const pairs = upcomingPartialDates
-      .map(d => `<span class="hl-inline">${d.dateLabel}</span> / <span class="hl-inline">${d.keyword}</span>`)
+    const lines = upcomingPartialDates
+      .map(d => `${d.dateLabel} [${d.keyword}] ${timeSelectHTML('arrival', d.rawDate, d.arrival)} 출근예상`)
       .join(', ');
-    mandatoryDescEl.innerHTML = `🚘 ${pairs}가 있어요. 출근시각을 미리 설정해보세요:`;
+    mandatoryDescEl.innerHTML = `🚘 ${lines}`;
   } else {
-    mandatoryDescEl.innerHTML = '🚘 언플러그/패스가 있는 날짜를 대비해 출근시각을 미리 설정해보세요:';
+    mandatoryDescEl.innerHTML = `🚘 언플러그/패스 날짜의 기본 출근시각: ${timeSelectHTML('default', '', state.mandatoryDefaultStart)}`;
   }
 
   // ---- simulation summary ----
