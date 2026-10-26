@@ -2,215 +2,451 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>근무시간 체크</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<meta name="description" content="근태 엑셀을 올리면 이번 달 목표 근무시간과 남은 시간, 월말 예상까지 바로 계산해요.">
+<meta property="og:title" content="근무시간 체크">
+<meta property="og:description" content="근태 엑셀을 올리면 이번 달 목표 근무시간과 남은 시간, 월말 예상까지 바로 계산해요.">
+<meta name="theme-color" content="#6c5ce7">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%236c5ce7'/%3E%3Ccircle cx='32' cy='35' r='16' fill='none' stroke='white' stroke-width='5'/%3E%3Cpath d='M32 27v9l6 4' fill='none' stroke='white' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
-    --bg:#f5f3fb; --card:#ffffff; --ink:#14121f; --muted:#8b879c;
-    --accent:#7c6df2; --accent2:#8b5cf6; --accent-soft:#ece9fb; --ok:#16a34a; --ok-soft:#e3f9ea;
-    --warn:#e11d48; --warn-soft:#fde8ec; --line:#ece9f5; --blue:#7c6df2; --blue-soft:#ece9fb;
-    --shadow:0 1px 3px rgba(20,20,20,.05), 0 8px 20px rgba(30,20,60,.07);
+    --bg:#f4f3f9; --surface:#ffffff; --surface-2:#f8f7fc; --fill:#f0eff6;
+    --ink:#17151f; --ink-2:#4a4659; --muted:#8e8a9c; --faint:#c2bfcf; --line:#edebf4;
+    --accent:#6c5ce7; --accent-2:#8b5cf6; --accent-soft:#efedfd; --accent-ink:#5243d8;
+    --ok:#14a052; --ok-soft:#e4f5eb; --warn:#e5484d; --warn-soft:#fdeeee; --brown:#8a5a3b; --today-bg:#fff6d5;
+    --shadow-sm:0 1px 2px rgba(23,21,40,.05);
+    --shadow:0 1px 2px rgba(23,21,40,.04), 0 4px 14px rgba(44,32,110,.05);
   }
+  [hidden]{display:none !important;}
   *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
   body{
-    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
-    background:var(--bg); color:var(--ink); padding:24px 16px 60px;
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Segoe UI",Roboto,sans-serif;
+    font-size:14px; line-height:1.5; letter-spacing:-.005em; -webkit-font-smoothing:antialiased;
   }
-  .wrap{max-width:960px;margin:0 auto;}
-  h1{font-size:34px;margin:0 0 6px;font-weight:800;letter-spacing:-0.02em;}
-  h2{font-size:15px;margin:30px 0 10px;font-weight:700;}
-  .sub{color:var(--muted);font-size:13px;margin-bottom:24px;}
+  button,input,select{font:inherit;color:inherit;}
+  .num{font-variant-numeric:tabular-nums;}
+  .container{max-width:1180px;margin:0 auto;padding:20px 20px 72px;}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
 
-  #dropzone{
-    border:1px solid var(--line); border-radius:16px; background:var(--card);
-    padding:16px 18px; text-align:center; cursor:pointer; transition:.15s; box-shadow:var(--shadow);
-  }
-  #dropzone.drag{border-color:var(--accent); background:var(--accent-soft);}
-  #dropzone p{margin:3px 0;color:var(--muted);font-size:13px;}
-  #dropzone strong{color:var(--ink);}
-  #fileInput{display:none;}
-  #fileName{margin-top:8px;font-size:13px;color:var(--accent);font-weight:700;}
+  /* ---------- top bar ---------- */
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;margin-bottom:18px;}
+  .brand{display:flex;align-items:center;gap:12px;min-width:0;}
+  .logo{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;
+    background:linear-gradient(135deg,var(--accent-2),var(--accent));box-shadow:0 6px 16px rgba(108,92,231,.32);}
+  .brand-title{font-size:18px;font-weight:800;letter-spacing:-.03em;line-height:1.2;}
+  .brand-sub{font-size:12.5px;color:var(--muted);}
+  .file-chip{display:flex;align-items:center;gap:8px;min-width:0;padding:5px 5px 5px 12px;border-radius:999px;
+    background:var(--surface);box-shadow:var(--shadow-sm);font-size:13px;}
+  .file-chip svg{flex:none;color:var(--accent);}
+  .file-chip .name{min-width:0;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;color:var(--ink-2);}
 
-  #result{display:none;margin-top:28px;}
+  /* ---------- buttons ---------- */
+  .btn{appearance:none;border:0;cursor:pointer;font-weight:700;border-radius:999px;white-space:nowrap;
+    transition:background .15s,opacity .15s,transform .08s;}
+  .btn:active{transform:scale(.97);}
+  .btn-primary{height:40px;padding:0 18px;font-size:14px;color:#fff;
+    background:linear-gradient(135deg,var(--accent-2),var(--accent));box-shadow:0 6px 16px rgba(108,92,231,.26);}
+  .btn-primary:hover{opacity:.92;}
+  .btn-soft{height:30px;padding:0 12px;font-size:12.5px;background:var(--accent-soft);color:var(--accent-ink);}
+  .btn-soft:hover{background:#e6e2fc;}
+  .btn-ghost{height:34px;padding:0 12px;font-size:13px;font-weight:600;background:transparent;color:var(--muted);}
+  .btn-ghost:hover{color:var(--accent-ink);}
 
-  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px;}
-  .card{background:var(--card);border-radius:18px;padding:18px;box-shadow:var(--shadow);}
-  .card .label{font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;}
-  .card .value{font-size:24px;font-weight:800;letter-spacing:-0.01em;}
-  .card.remain .value{color:var(--accent);}
-  .card.done .value{color:var(--ok);}
+  /* ---------- empty state ---------- */
+  .empty{max-width:640px;margin:44px auto 0;}
+  .drop{padding:44px 28px 32px;border-radius:24px;background:var(--surface);text-align:center;cursor:pointer;
+    box-shadow:var(--shadow);transition:background .15s,box-shadow .15s;}
+  .drop:hover{box-shadow:0 1px 2px rgba(23,21,40,.04),0 12px 36px rgba(44,32,110,.1);}
+  .drop.drag{background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent),var(--shadow);}
+  .drop-icon{width:64px;height:64px;margin:0 auto 18px;border-radius:20px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);}
+  .drop h1{margin:0 0 6px;font-size:22px;font-weight:800;letter-spacing:-.03em;}
+  .drop p{margin:0 0 22px;color:var(--muted);}
+  .drop-actions{display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .features{list-style:none;margin:14px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+  .features li{padding:14px 16px;border-radius:16px;background:var(--surface);box-shadow:var(--shadow-sm);font-size:12.5px;color:var(--muted);}
+  .features b{display:block;margin-bottom:2px;font-size:13.5px;color:var(--ink);}
 
-  .progress-outer{background:var(--card);border-radius:18px;padding:18px 20px;margin-bottom:22px;box-shadow:var(--shadow);}
-  .progress-outer .row{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:10px;font-weight:600;}
-  .bar-bg{height:10px;border-radius:10px;background:#ececea;overflow:hidden;}
-  .bar-fill{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:10px;transition:width .3s;}
+  /* ---------- hero ---------- */
+  .hero{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:18px;
+    padding:24px;border-radius:24px;color:#fff;
+    background:radial-gradient(90% 120% at 100% 0%,rgba(190,170,255,.55) 0%,rgba(190,170,255,0) 60%),linear-gradient(135deg,#7a67f4 0%,#5844d4 100%);
+    box-shadow:0 4px 12px rgba(88,68,212,.14);}
+  .hero-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .hero-month{padding:4px 11px;border-radius:999px;background:rgba(255,255,255,.18);font-size:13px;font-weight:700;}
+  .hero-meta{font-size:12.5px;opacity:.82;}
+  .hero-label{margin-top:18px;font-size:14px;font-weight:600;opacity:.88;}
+  .hero-value{margin-top:2px;font-size:42px;font-weight:800;letter-spacing:-.04em;line-height:1.12;}
+  .hero-bar{margin-top:18px;height:10px;border-radius:999px;background:rgba(255,255,255,.22);overflow:hidden;}
+  .hero-bar i{display:block;width:0;height:100%;border-radius:999px;background:#fff;transition:width .45s ease;}
+  .hero-bar-meta{display:flex;justify-content:space-between;margin-top:8px;font-size:12.5px;opacity:.9;}
+  .hero-today{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;margin-top:14px;padding:10px 12px;border-radius:14px;
+    background:rgba(255,255,255,.14);font-size:13px;line-height:1.45;}
+  .hero-today .txt{display:flex;align-items:flex-start;gap:7px;flex:1 1 220px;}
+  .hero-today .txt svg{flex:none;margin-top:1px;opacity:.9;}
+  .hero-today b{font-weight:800;}
+  .hero-today small{display:block;font-size:11.5px;opacity:.75;}
+  .hero-today .set{appearance:none;border:0;cursor:pointer;padding:6px 12px;border-radius:999px;background:#fff;color:var(--accent-ink);font-size:12px;font-weight:800;}
+  .hero-today .time{margin:0 1px;padding:0 5px;border-radius:6px;background:rgba(255,255,255,.2);font-size:14.5px;font-weight:800;}
+  .hero-today .changed{display:flex;align-items:center;gap:6px;flex:none;font-size:12px;font-weight:700;}
+  .hero-today .undo{appearance:none;border:0;cursor:pointer;padding:6px 12px;border-radius:999px;background:#fff;color:var(--accent-ink);font-size:12px;font-weight:800;}
+  .hero-today .undo:hover{background:rgba(255,255,255,.32);}
+  @keyframes flashPair{0%{box-shadow:0 0 0 0 rgba(108,92,231,.55);}100%{box-shadow:0 0 0 10px rgba(108,92,231,0);}}
+  .time-select-pair.flash{animation:flashPair 1s ease-out 2;}
+  .hero-side{display:flex;flex-direction:column;justify-content:center;padding:20px;border-radius:18px;background:#fff;color:var(--ink);}
+  .hero-side .k{font-size:13px;font-weight:600;color:var(--muted);}
+  .hero-side .v{margin-top:4px;font-size:28px;font-weight:800;letter-spacing:-.03em;line-height:1.2;}
+  .hero-side .s{margin-top:6px;font-size:12.5px;color:var(--muted);}
+  .hero-side .s2{margin-top:10px;font-size:11.5px;line-height:1.5;color:var(--muted);}
+  .hero-side .s2.warn{color:var(--warn);}
+  .ok-text{color:var(--ok) !important;}
+  .bad-text{color:var(--warn) !important;}
 
-  .notice{font-size:12px;color:var(--muted);background:var(--card);border-radius:14px;padding:10px 14px;margin-bottom:18px;box-shadow:var(--shadow);}
-  .notice.warn{color:var(--warn);background:var(--warn-soft);box-shadow:none;}
+  /* ---------- stats ---------- */
+  .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px;}
+  .stat{padding:15px 16px;border-radius:18px;background:var(--surface);box-shadow:var(--shadow-sm);}
+  .stat .k{font-size:12.5px;font-weight:600;color:var(--muted);}
+  .stat .v{margin-top:3px;font-size:22px;font-weight:800;letter-spacing:-.03em;}
+  .stat .s{margin-top:1px;font-size:12px;color:var(--muted);}
 
-  /* planner */
-  #planner{background:var(--card);border-radius:18px;padding:18px 20px;margin-bottom:20px;box-shadow:var(--shadow);}
-  #planner .desc{font-size:12.5px;color:var(--muted);margin-bottom:12px;}
-  .mandatory-wrap{
-    display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;
-    padding:2px 2px;border-radius:12px;
-  }
-  .mandatory-wrap #mandatoryStartDesc{font-size:12.5px;color:var(--muted);}
-  .hl-inline{font-weight:800;color:var(--accent);}
-  .plan-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;}
-  .plan-form input[type="date"], .plan-form select, .plan-form input[type="number"]{
-    padding:8px 12px;border:1px solid var(--line);border-radius:999px;font-size:13px;background:#fff;color:var(--ink);
-  }
-  .plan-form button{
-    padding:8px 18px;border:none;border-radius:999px;background:linear-gradient(135deg,var(--accent2),var(--accent));color:#fff;font-size:13px;font-weight:700;cursor:pointer;
-  }
-  .plan-form button:hover{opacity:.88;}
-  #planList{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:6px;}
-  #planList li{
-    display:flex;justify-content:space-between;align-items:center;background:var(--accent-soft);
-    border-radius:12px;padding:7px 14px;font-size:13px;font-weight:600;
-  }
-  #planList li .x{cursor:pointer;color:var(--muted);font-weight:700;padding:0 4px;}
-  #planList li .x:hover{color:var(--warn);}
-  .sim-result{border-top:1px solid var(--line);padding-top:14px;margin-top:4px;}
-  .sim-result .big{font-size:22px;font-weight:800;}
-  .sim-result .big.ok{color:var(--ok);}
-  .sim-result .big.bad{color:var(--warn);}
-  .sim-result .hint{
-    font-size:15px;color:var(--ink);margin-top:10px;line-height:1.6;
-    background:#f7f6fb;border-radius:14px;padding:12px 16px;
-  }
-  .sim-result .hint .hl{
-    font-weight:800;color:var(--warn);font-size:1.2em;padding:0 1px;
-  }
-  .sim-result .hint.ok .hl{color:var(--ok);}
+  /* ---------- notices ---------- */
+  .notices{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+  .notice{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:14px;background:var(--surface);
+    box-shadow:var(--shadow-sm);font-size:12.5px;line-height:1.55;color:var(--ink-2);}
+  .notice .ico{flex:none;width:18px;height:18px;margin-top:1px;border-radius:50%;display:grid;place-items:center;
+    background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:800;}
+  .notice.warn{background:var(--warn-soft);color:#b42a30;box-shadow:none;}
+  .notice.warn .ico{background:#fff;color:var(--warn);}
 
-  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:18px;box-shadow:var(--shadow);background:var(--card);}
-  .table-hint{display:none;font-size:11.5px;color:var(--muted);margin-bottom:6px;}
-  table{width:100%;min-width:760px;table-layout:fixed;border-collapse:collapse;background:var(--card);font-size:13px;}
-  thead th{background:#f7f6fb;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:11px 6px;text-align:center;font-weight:700;}
-  tbody td{padding:9px 6px;text-align:center;border-top:1px solid var(--line);}
-  tbody tr.weekend{background:#faf9fd;color:var(--muted);}
-  tbody tr.other-month{opacity:.45;}
-  tbody tr.missing{background:var(--warn-soft);}
-  tbody tr.planned td{background:var(--accent-soft);border-top:1px solid var(--accent);border-bottom:1px solid var(--accent);}
-  tbody tr.today-row td{background:var(--accent-soft);font-weight:800;}
-  td.flag-cell{padding:6px 4px;vertical-align:middle;}
-  td.flag-cell .unplug-tag{margin-top:3px;}
-  .today-badge{display:inline-block;background:linear-gradient(135deg,var(--accent2),var(--accent));color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px;white-space:nowrap;}
-  .plan-badge{display:inline-block;margin-left:6px;background:var(--accent);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;vertical-align:middle;}
-  .unplug-tag{display:inline-block;background:var(--accent2);color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px;white-space:nowrap;}
-  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;}
+  /* ---------- layout & panels ---------- */
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;grid-template-areas:"daily planner";gap:16px;align-items:start;margin-top:16px;}
+  .panel{padding:20px;border-radius:22px;background:var(--surface);box-shadow:var(--shadow);}
+  .daily{grid-area:daily;min-width:0;}
+  .planner{grid-area:planner;position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto;}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
+  .panel-title{margin:0;font-size:16px;font-weight:800;letter-spacing:-.03em;}
+  .panel-desc{margin:2px 0 0;font-size:12.5px;color:var(--muted);}
+  .tools{display:flex;align-items:center;flex-wrap:wrap;gap:10px;}
+
+  .switch{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--ink-2);cursor:pointer;user-select:none;}
+  .switch input{appearance:none;-webkit-appearance:none;position:relative;flex:none;width:34px;height:20px;margin:0;border-radius:999px;
+    background:#dcd9e8;cursor:pointer;transition:background .15s;}
+  .switch input::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;
+    box-shadow:0 1px 2px rgba(0,0,0,.18);transition:transform .15s;}
+  .switch input:checked{background:var(--accent);}
+  .switch input:checked::after{transform:translateX(14px);}
+
+  /* ---------- tags (left column) ---------- */
+  .legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:-4px 0 14px;font-size:12px;color:var(--muted);}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .tag{display:inline-block;min-width:44px;height:20px;line-height:20px;padding:0 7px;border-radius:999px;
+    font-size:11px;font-weight:700;font-style:normal;color:#fff;text-align:center;white-space:nowrap;}
+  .tag-today{background:#ef4444;}
+  .tag-office{background:transparent;color:var(--ok);}
+  .tag-remote{background:transparent;color:var(--brown);}
+  .tag-leave{background:#f97316;color:#fff;}
+  .tag-unplug{background:var(--accent-2);}
+  .tag-leave.done{background:#ffe7d6;color:#e8590c;}
+  .tag-unplug.done{background:var(--accent-soft);color:var(--accent-ink);}
+
+  /* ---------- daily table ---------- */
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table.days{width:100%;min-width:700px;table-layout:fixed;border-collapse:separate;border-spacing:0;font-size:13px;}
+  .days th{padding:0 6px 10px;border-bottom:1px solid var(--line);font-size:11.5px;font-weight:600;color:#aaa2d9;text-align:center;}
+  .days td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:center;vertical-align:middle;}
+  .days tbody tr:last-child td{border-bottom:0;}
+  .days .c-status{text-align:center;}
+  .days tbody tr:not(.today-row):not(.missing):not(.planned):not(.off-day):hover td{background:var(--surface-2);}
+  .days tr.off-day td{background:#fbfafd;color:var(--muted);}
+  .days tr.missing td{background:var(--warn-soft);}
+  .days tr.planned td{background:#f7f5ff;box-shadow:inset 0 1px 0 var(--accent),inset 0 -1px 0 var(--accent);}
+  .days tr.today-row td{background:var(--today-bg);}
+  .hide-off tr.off-day{display:none !important;}
+
+  .flags{display:flex;flex-direction:column;align-items:center;gap:4px;}
+  .m-flags{display:none;}
+  .date-main{display:block;font-weight:600;white-space:nowrap;}
+  .date-wd{margin-left:4px;font-weight:500;color:var(--muted);}
+  tr.today-row .date-main{font-weight:800;}
+  .plan-badge{display:inline-block;height:18px;line-height:18px;margin-top:4px;padding:0 7px;border-radius:999px;
+    background:var(--accent);color:#fff;font-size:10.5px;font-weight:700;}
+  .dash{color:var(--faint);}
+  .h-main{font-weight:700;}
+  .h-main em{margin-left:4px;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--accent-ink);
+    font-size:10px;font-weight:700;font-style:normal;vertical-align:1px;}
+  tr.today-row .h-main em{background:#fff;}
+  .h-sub{margin-top:2px;font-size:11px;line-height:1.35;color:var(--muted);white-space:pre-line;}
+  .diff{font-weight:700;}
+  .diff.pos{color:var(--ok);}
+  .diff.neg{color:var(--warn);}
+  .diff.muted{color:var(--faint);font-weight:600;}
+  .badge{display:inline-block;height:22px;line-height:22px;padding:0 9px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap;}
   .badge.ok{background:var(--ok-soft);color:var(--ok);}
-  .badge.warn{background:var(--warn-soft);color:var(--warn);}
-  .badge.muted{background:#f0eff7;color:var(--muted);}
-  .badge.blue{background:var(--accent);color:#fff;}
-  .note{font-size:11.5px;color:var(--muted);}
-  .proj{font-size:11px;color:var(--muted);font-style:italic;}
-  .time-select-pair{display:inline-flex;align-items:center;gap:2px;background:var(--accent-soft);border-radius:999px;padding:2px 6px;font-weight:700;}
-  .row-time-select{border:none;background:transparent;color:var(--accent);font-weight:800;font-size:13px;padding:2px 0;cursor:pointer;}
-  .row-time-select:focus{outline:none;}
-  td .time-select-pair{padding:2px 4px;}
-  td .row-time-select{font-size:12px;}
-  @media (max-width:700px){ .table-hint{display:block;} }
-  .footnote{font-size:11.5px;color:var(--muted);margin-top:8px;}
-
-  #resetBtn{
-    margin-top:20px;background:#fff;border:1.5px solid var(--ink);border-radius:999px;
-    padding:9px 18px;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer;
+  .badge.warn{background:#fde0e1;color:var(--warn);}
+  .badge.muted{background:var(--fill);color:var(--muted);}
+  .badge.holiday{background:var(--fill);color:var(--warn);}
+  .badge.accent{background:var(--accent);color:#fff;}
+  tr.today-row .badge.muted{background:#fff;}
+  .note{margin-top:3px;font-size:11.5px;line-height:1.4;color:var(--muted);overflow-wrap:anywhere;}
+  .memo-ico{display:none;margin-left:5px;color:var(--faint);vertical-align:-2px;}
+  .memo-ico.ghost{visibility:hidden;}
+  .tip{position:fixed;z-index:60;max-width:280px;padding:7px 11px;border-radius:10px;background:#fff;color:var(--ink-2);
+    font-size:12px;font-weight:600;line-height:1.45;box-shadow:0 0 0 1px rgba(108,92,231,.10),0 8px 22px rgba(44,32,110,.14);pointer-events:none;white-space:pre-line;}
+  @media (hover:hover){
+    .days .note{display:none;}
+    .memo-ico{display:inline-block;}
+    .days td[data-tip]{cursor:help;}
+    .days .h-sub{display:none;}
   }
-  #resetBtn:hover{background:var(--ink);color:#fff;}
+  .footnote{margin:12px 0 0;font-size:11.5px;color:var(--muted);}
+
+  /* time pickers (5분 단위) */
+  .time-select-pair{display:inline-flex;align-items:center;gap:1px;padding:3px 8px;border-radius:999px;
+    background:var(--accent-soft);color:var(--accent-ink);font-weight:800;}
+  tr.today-row .time-select-pair{background:#fff;}
+  .row-time-select{appearance:none;-webkit-appearance:none;margin:0;border:0;padding:1px 11px 1px 1px;cursor:pointer;
+    background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%235243d8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 1px center;
+    color:inherit;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;}
+  .row-time-select:focus{outline:none;}
+  .row-time-select:focus-visible{outline:2px solid var(--accent);border-radius:4px;}
+
+  /* ---------- planner ---------- */
+  .field-label{margin:14px 0 6px;font-size:12px;font-weight:700;color:var(--ink-2);}
+  .panel-head + .field-label{margin-top:0;}
+  .input.block{display:block;width:100%;}
+  #addPlanBtn{flex:1;}
+  .unplug-note{padding:10px 12px;border-radius:14px;background:var(--surface-2);font-size:13px;line-height:2;color:var(--ink-2);}
+  .unplug-note b{font-weight:700;color:var(--ink);}
+  .seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;border-radius:13px;background:var(--fill);}
+  .seg button{appearance:none;border:0;padding:8px 4px;border-radius:10px;background:transparent;cursor:pointer;
+    font-size:13px;font-weight:700;color:var(--muted);transition:background .15s,color .15s;}
+  .seg button.on{background:#fff;color:var(--accent-ink);box-shadow:0 1px 3px rgba(23,21,40,.1);}
+  .form-row{display:flex;gap:8px;margin-top:10px;}
+  .input{flex:1;min-width:0;height:40px;padding:0 12px;border:0;border-radius:12px;background:var(--fill);font-size:14px;color:var(--ink);}
+  .input:focus{outline:2px solid var(--accent);outline-offset:0;background:#fff;}
+  #planCustom{flex:0 0 96px;}
+  .form-error{margin-top:6px;font-size:12.5px;color:var(--warn);}
+  .form-error:empty{display:none;}
+  .form-error.center{margin-top:14px;text-align:center;}
+  .chips{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0;padding:0;}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 4px 4px 11px;border-radius:999px;background:var(--accent-soft);
+    color:var(--accent-ink);font-size:12.5px;font-weight:700;}
+  .chip button{appearance:none;border:0;width:20px;height:20px;padding:0;border-radius:50%;cursor:pointer;
+    background:rgba(108,92,231,.14);color:var(--accent-ink);font-size:10px;line-height:20px;}
+  .chip button:hover{background:var(--warn);color:#fff;}
+  .chips-empty{font-size:12.5px;color:var(--muted);}
+  .sim{margin-top:16px;padding-top:16px;border-top:1px solid var(--line);}
+  .sim-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted);}
+  .sim-row + .sim-row{margin-top:6px;}
+  .sim-row b{font-weight:700;color:var(--ink);}
+  .sim-big{font-size:22px;font-weight:800;letter-spacing:-.03em;}
+  .hint{margin-top:12px;padding:12px 14px;border-radius:14px;background:var(--surface-2);font-size:13.5px;line-height:1.65;color:var(--ink);}
+  .hint .hl{font-weight:800;color:var(--warn);}
+  .hint.ok .hl{color:var(--ok);}
+  .howto{margin-top:14px;font-size:12.5px;color:var(--muted);}
+  .howto summary{cursor:pointer;list-style:none;font-weight:700;color:var(--ink-2);}
+  .howto summary::-webkit-details-marker{display:none;}
+  .howto summary::before{content:"▸";display:inline-block;width:14px;color:var(--muted);}
+  .howto[open] summary::before{content:"▾";}
+  .howto p{margin:8px 0 0;line-height:1.6;}
+
+  /* ---------- drop overlay ---------- */
+  .drop-overlay{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;
+    background:rgba(88,68,212,.14);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);}
+  .drop-overlay.show{display:flex;}
+  .drop-overlay div{padding:22px 28px;border-radius:20px;background:#fff;color:var(--accent-ink);font-size:15px;font-weight:800;box-shadow:var(--shadow);}
+
+  /* ---------- responsive ---------- */
+  @media (max-width:1080px){
+    .layout{grid-template-columns:minmax(0,1fr);grid-template-areas:"planner" "daily";}
+    .planner{position:static;max-height:none;overflow:visible;}
+  }
+  @media (max-width:760px){
+    .container{padding:14px 14px 56px;}
+    .empty{margin-top:22px;}
+    .features{grid-template-columns:1fr;}
+    .hero{grid-template-columns:1fr;padding:20px;border-radius:22px;}
+    .hero-value{font-size:34px;}
+    .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+    .panel{padding:16px;border-radius:20px;}
+
+    /* 표 → 카드 */
+    .table-wrap{overflow:visible;}
+    table.days{min-width:0;table-layout:auto;}
+    .days colgroup,.days thead{display:none;}
+    .days{display:block;}
+    .days tbody{display:flex;flex-direction:column;gap:8px;}
+    .days tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-areas:"date date diff" "in out hours" "status status status";
+      gap:10px 8px;padding:12px 14px;border-radius:16px;background:var(--surface-2);}
+    .days td{display:block;padding:0;border:0 !important;background:transparent !important;box-shadow:none !important;text-align:left;}
+    .days td[data-label]::before{content:attr(data-label);display:block;margin-bottom:3px;font-size:11px;font-weight:600;color:var(--muted);}
+    .days td.c-flag{display:none;}
+    .days td.c-date{grid-area:date;display:flex;align-items:center;flex-wrap:wrap;gap:5px;}
+    .days td.c-diff{grid-area:diff;align-self:center;text-align:right;font-size:14px;}
+    .days td.c-in{grid-area:in;}
+    .days td.c-out{grid-area:out;}
+    .days td.c-hours{grid-area:hours;}
+    .days td.c-status{grid-area:status;padding:0;text-align:left;}
+    .days td.c-status.plain-done{display:none;}
+    .m-flags{display:inline-flex;gap:4px;}
+    .date-main{display:inline;}
+    .plan-badge{margin-top:0;}
+    .days tr.today-row{background:var(--today-bg);}
+    .days tr.missing{background:var(--warn-soft);}
+    .days tr.planned{background:#f7f5ff;box-shadow:inset 0 0 0 1.5px var(--accent);}
+    .days tr.off-day{grid-template-areas:"date date status";padding:10px 14px;background:#fbfafd;}
+    .days tr.off-day td.c-in,.days tr.off-day td.c-out,.days tr.off-day td.c-hours,.days tr.off-day td.c-diff{display:none;}
+    .days tr.off-day td.c-status{text-align:right;}
+  }
+  @media (max-width:480px){
+    .brand-sub{display:none;}
+    .file-chip .name{max-width:110px;}
+    .hero-value{font-size:30px;}
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>월 근무시간 체크</h1>
-  <div class="sub">근태 엑셀 파일(.xls/.xlsx)을 넣으면 이번 달 목표시간과 잔여시간을 자동 계산합니다.</div>
-
-  <div id="dropzone">
-    <p><strong>여기에 파일을 끌어다 놓거나 클릭해서 선택하세요</strong></p>
-    <p>지원 형식: .xls, .xlsx</p>
-    <div id="fileName"></div>
-  </div>
-  <input type="file" id="fileInput" accept=".xls,.xlsx">
-
-  <div id="result">
-    <div class="cards">
-      <div class="card"><div class="label">기준 월</div><div class="value" id="cMonth">-</div></div>
-      <div class="card"><div class="label">목표 근무시간</div><div class="value" id="cTarget">-</div></div>
-      <div class="card"><div class="label">오늘까지 누적 실제</div><div class="value" id="cActual">-</div></div>
-      <div class="card remain"><div class="label">오늘 기준 잔여</div><div class="value" id="cRemain">-</div></div>
+<div class="container">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5"/><path d="M9.5 2.5h5"/></svg>
+      </div>
+      <div>
+        <div class="brand-title">근무시간 체크</div>
+        <div class="brand-sub">근태 엑셀로 이번 달 근무시간을 계산해요</div>
+      </div>
     </div>
-
-    <div class="progress-outer">
-      <div class="row"><span id="progressLabel">진행률</span><span id="progressPct">0%</span></div>
-      <div class="bar-bg"><div class="bar-fill" id="barFill" style="width:0%"></div></div>
+    <div class="file-chip" id="fileChip" hidden>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>
+      <span class="name" id="fileName"></span>
+      <button class="btn btn-soft" id="changeFileBtn" type="button">다른 파일</button>
     </div>
+  </header>
 
-    <div class="notice" id="holidayNotice"></div>
-    <div class="notice warn" id="missingNotice" style="display:none;"></div>
+  <!-- 처음 화면 -->
+  <section class="empty" id="emptyState">
+    <div class="drop" id="dropzone" role="button" tabindex="0" aria-label="근태 엑셀 파일 선택">
+      <div class="drop-icon" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M20 16v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3"/></svg>
+      </div>
+      <h1>근태 엑셀 파일을 올려주세요</h1>
+      <p>여기로 끌어다 놓거나 버튼을 눌러 선택하세요 · .xls, .xlsx</p>
+      <div class="drop-actions">
+        <button class="btn btn-primary" id="pickBtn" type="button">파일 선택</button>
+        <button class="btn btn-ghost" id="sampleBtn" type="button">샘플 데이터로 먼저 둘러보기</button>
+      </div>
+      <div class="form-error center" id="emptyError" role="alert"></div>
+    </div>
+    <ul class="features">
+      <li><b>공휴일 자동 제외</b>대체공휴일까지 반영해서 목표시간을 계산해요</li>
+      <li><b>반차 · 패스 시뮬레이션</b>계획을 넣으면 월말에 남는지 바로 보여줘요</li>
+      <li><b>내 브라우저에서만 처리</b>파일은 어디에도 업로드되지 않아요</li>
+    </ul>
+  </section>
+  <input type="file" id="fileInput" accept=".xls,.xlsx" hidden>
 
-    <h2>반차 · 단축근무(패스) 계획해보기</h2>
-    <div id="planner">
-      <div class="desc">
-        중간에 반차나 2시간 패스를 쓰면 월말에 목표시간을 못 채울 수도 있어요. 날짜와 차감시간을 넣어보면
-        <b>그 계획을 적용했을 때 월말에 시간이 남는지 모자란지</b>를 바로 계산해 드립니다.
-        (기록이 없는 남은 평일은 일단 8시간 근무 예정으로 가정해서 계산해요. 부족분을 채울 날을 계산할 때는
-        이미 재택으로 예정된 날은 빼고, 출근하는 평일만 대상으로 계산해요.)
+  <!-- 결과 화면 -->
+  <main id="result" hidden>
+    <section class="hero" aria-label="이번 달 요약">
+      <div class="hero-main">
+        <div class="hero-top"><span class="hero-month" id="cMonth"></span><span class="hero-meta" id="heroMeta"></span></div>
+        <div class="hero-label" id="heroLabel">목표까지 남은 시간</div>
+        <div class="hero-value num" id="cRemain">-</div>
+        <div class="hero-bar" aria-hidden="true"><i id="barFill"></i></div>
+        <div class="hero-bar-meta num"><span id="progressLabel"></span><span id="progressPct"></span></div>
+        <div class="hero-today" id="heroToday" hidden></div>
       </div>
-      <div id="mandatoryStartWrap" class="mandatory-wrap">
-        <span id="mandatoryStartDesc"></span>
+      <div class="hero-side">
+        <div class="k">월말 예상</div>
+        <div class="v num" id="heroMonthEnd">-</div>
+        <div class="s num" id="heroMonthEndSub"></div>
+        <div class="s2" id="heroHoliday"></div>
       </div>
-      <div class="plan-form">
-        <input type="date" id="planDate">
-        <select id="planType">
-          <option value="4">반차 (-4h)</option>
-          <option value="2">2시간 패스 (-2h)</option>
-          <option value="custom">직접입력</option>
-        </select>
-        <input type="number" id="planCustom" placeholder="차감 시간" step="0.5" min="0" style="display:none;width:90px;">
-        <button id="addPlanBtn">추가</button>
-      </div>
-      <ul id="planList"></ul>
-      <div class="sim-result">
-        <div class="row" style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);">
-          <span>계획 반영 시 예상 월말 근무시간</span>
-          <span id="simProjected">-</span>
+    </section>
+
+    <section class="stats" aria-label="주요 수치">
+      <div class="stat"><div class="k">목표 근무시간</div><div class="v num" id="cTarget">-</div><div class="s" id="cTargetSub"></div></div>
+      <div class="stat"><div class="k">누적 근무</div><div class="v num" id="cActual">-</div><div class="s">오늘까지 기록 기준</div></div>
+      <div class="stat"><div class="k">남은 근무일</div><div class="v num" id="cDaysLeft">-</div><div class="s">오늘 포함 평일</div></div>
+      <div class="stat"><div class="k">현재 페이스</div><div class="v num" id="cPace">-</div><div class="s">오늘까지 목표 대비</div></div>
+    </section>
+
+    <section class="notices">
+      <div class="notice warn" id="missingNotice" hidden></div>
+    </section>
+
+    <div class="layout">
+      <aside class="panel planner" aria-labelledby="plannerTitle">
+        <div class="panel-head">
+          <div>
+            <h2 class="panel-title" id="plannerTitle">반차 · 패스 계획</h2>
+            <p class="panel-desc">날짜를 넣으면 월말 결과가 바로 바뀌어요</p>
+          </div>
         </div>
-        <div class="row" style="display:flex;justify-content:space-between;margin-top:4px;">
-          <span style="font-size:13px;color:var(--muted);">목표 대비</span>
-          <span class="big" id="simDiff">-</span>
+        <div class="field-label">① 날짜</div>
+        <input type="date" class="input block" id="planDate" aria-label="계획 날짜">
+        <div class="field-label">② 종류</div>
+        <div class="seg" id="planSeg" role="radiogroup" aria-label="계획 종류">
+          <button type="button" role="radio" aria-checked="true" class="on" data-hours="4">반차 −4h</button>
+          <button type="button" role="radio" aria-checked="false" data-hours="2">패스 −2h</button>
+          <button type="button" role="radio" aria-checked="false" data-hours="custom">직접 입력</button>
         </div>
-        <div class="hint" id="simHint"></div>
-      </div>
-    </div>
+        <div class="form-row">
+          <input type="number" class="input" id="planCustom" placeholder="뺄 시간" step="0.5" min="0.5" max="8" aria-label="뺄 시간" hidden>
+          <button class="btn btn-primary" id="addPlanBtn" type="button">계획 추가</button>
+        </div>
+        <div class="form-error" id="planError" role="alert"></div>
+        <ul class="chips" id="planList"></ul>
+        <div class="field-label">③ 언플러그·패스 날 출근한 시간</div>
+        <div id="mandatoryStartWrap" class="unplug-note"><span id="mandatoryStartDesc"></span></div>
+        <div class="sim">
+          <div class="sim-row"><span>예상 월말 근무시간</span><b class="num" id="simProjected">-</b></div>
+          <div class="sim-row"><span>목표 대비</span><span class="sim-big num" id="simDiff">-</span></div>
+          <div class="hint" id="simHint"></div>
+        </div>
+        <details class="howto">
+          <summary>어떻게 계산하나요?</summary>
+          <p>기록이 없는 남은 평일은 8시간 근무로 가정해요. 부족분을 채울 날을 계산할 때는 이미 재택으로 예정된 날은 빼고, 출근하는 평일만 대상으로 해요.</p>
+          <p>언플러그·패스 날은 출근 시각부터 언플러그 시작 전까지 + 언플러그 시간으로 계산해요. 출근·퇴근 시각은 표에서 바로 바꿀 수 있어요.</p>
+          <p>넣은 계획과 시간 설정은 이 브라우저에 월별로 저장돼요.</p>
+        </details>
+      </aside>
 
-    <h2>일별 상세</h2>
-    <div class="table-hint">👉 좌우로 스크롤해서 전체 표를 볼 수 있어요</div>
-    <div class="table-scroll">
-      <table>
-        <colgroup>
-          <col style="width:54px"><col style="width:118px"><col style="width:92px"><col style="width:92px">
-          <col style="width:118px"><col style="width:92px"><col style="width:194px">
-        </colgroup>
-        <thead>
-          <tr>
-            <th></th><th>날짜</th><th>출근</th><th>퇴근</th>
-            <th>실제/예상(h)</th><th>누적차이(h)</th><th>상태</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
+      <section class="panel daily" aria-labelledby="dailyTitle">
+        <div class="panel-head">
+          <h2 class="panel-title" id="dailyTitle">일별 상세</h2>
+          <div class="tools">
+            <button class="btn btn-soft" id="jumpTodayBtn" type="button" hidden>오늘로 이동</button>
+            <label class="switch"><input type="checkbox" id="hideOff">주말·공휴일 숨기기</label>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="days">
+            <colgroup>
+              <col style="width:72px"><col style="width:104px"><col style="width:84px"><col style="width:100px">
+              <col style="width:126px"><col style="width:80px"><col>
+            </colgroup>
+            <thead>
+              <tr><th></th><th>날짜</th><th>출근</th><th>퇴근</th><th>근무시간</th><th>누적 차이</th><th class="c-status">상태 · 메모</th></tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+        <p class="footnote">* 예상 시간은 점심시간(12~13시)과 겹치는 만큼 자동으로 빼고 계산해요.</p>
+      </section>
     </div>
-    <div class="footnote">* 예상 시간 계산 시 점심시간(12~13시)과 겹치는 만큼은 자동으로 제외돼요.</div>
-
-    <button id="resetBtn">다른 파일 넣기</button>
-  </div>
+  </main>
 </div>
+<div class="tip" id="tip" role="tooltip" hidden></div>
+<div class="drop-overlay" id="dropOverlay" aria-hidden="true"><div>여기에 놓으면 새 파일로 다시 계산해요</div></div>
 
 <script>
-// ---- Korean public holidays (statutory), 2025-2027. Extend as needed. ----
 const HOLIDAYS = {
   "2025-01-01":"신정","2025-01-27":"임시공휴일","2025-01-28":"설날연휴","2025-01-29":"설날","2025-01-30":"설날연휴",
   "2025-03-01":"삼일절","2025-03-03":"대체공휴일(삼일절)",
@@ -365,103 +601,37 @@ const HOLIDAYS = {
 const LABOR_DAY = {};
 for (let y = 2025; y <= 2046; y++) { LABOR_DAY[`${y}-05-01`] = 1; }
 
-let state = null;   // { entries: [...target-month entries...], targetYm, targetHours, today }
-let plans = [];     // { id, date, hours }
+const $ = id => document.getElementById(id);
+const WD = '일월화수목금토';
+const pad2 = n => String(n).padStart(2, '0');
+const LS_PREFIX = 'whc:v1:';
+
+let state = null;   // 업로드한 달의 계산 상태
+let plans = [];     // { id, date, hours } 반차/패스 계획
 let planIdSeq = 1;
+let planMode = '4'; // '4' | '2' | 'custom'
 
-const dropzone = document.getElementById('dropzone');
-const fileInput = document.getElementById('fileInput');
-const fileNameEl = document.getElementById('fileName');
-const resultEl = document.getElementById('result');
-const resetBtn = document.getElementById('resetBtn');
-const planType = document.getElementById('planType');
-const planCustom = document.getElementById('planCustom');
+/* ---------- 작은 도우미들 ---------- */
+function lsGet(key){ try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+function lsSet(key, val){ try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
+function shortTime(t){ const m = String(t || '').match(/^(\d{1,2}):(\d{2})/); return m ? `${pad2(m[1])}:${m[2]}` : String(t || ''); }
+function md(ds){ const p = ds.split('-'); return `${parseInt(p[1], 10)}/${parseInt(p[2], 10)}`; }
+function fmtDate(ds){ return `${md(ds)} (${wdOf(ds)})`; }
+function wdOf(ds){ const [y, m, d] = ds.split('-').map(Number); return WD[new Date(y, m - 1, d).getDay()]; }
+const isHHMM = v => typeof v === 'string' && /^\d{2}:\d{2}$/.test(v);
+function planTypeLabel(h){ return h === 4 ? '반차' : h === 2 ? '패스' : '계획'; }
+function cleanNote(s){ const m = String(s).match(/^완료\s*\(\s*([\s\S]*?)\s*\)\s*$/); return m ? m[1] : String(s); }
 
-dropzone.addEventListener('click', () => fileInput.click());
-dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
-dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
-dropzone.addEventListener('drop', e => {
-  e.preventDefault(); dropzone.classList.remove('drag');
-  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
-});
-fileInput.addEventListener('change', e => { if (e.target.files.length) handleFile(e.target.files[0]); });
-resetBtn.addEventListener('click', () => {
-  resultEl.style.display = 'none';
-  fileNameEl.textContent = '';
-  fileInput.value = '';
-  plans = [];
-  state = null;
-});
-planType.addEventListener('change', () => {
-  planCustom.style.display = planType.value === 'custom' ? 'inline-block' : 'none';
-});
-// 시:분(5분 단위) 드롭다운 한 쌍을 만든다. role="checkout"(오늘 퇴근) / "arrival"(언플러그 날짜별 출근) / "default"(언플러그 기본 출근시각)
-function timeSelectHTML(role, date, value){
-  const [vh, vm] = (value || '10:00').split(':');
-  let hourOpts = '';
-  for (let h = 0; h < 24; h++){
-    const hh = String(h).padStart(2,'0');
-    hourOpts += `<option value="${hh}"${hh===vh?' selected':''}>${hh}</option>`;
-  }
-  let minOpts = '';
-  ['00','05','10','15','20','25','30','35','40','45','50','55'].forEach(mm => {
-    minOpts += `<option value="${mm}"${mm===vm?' selected':''}>${mm}</option>`;
-  });
-  return `<span class="time-select-pair"><select class="row-time-select" data-role="${role}" data-part="hour" data-date="${date||''}">${hourOpts}</select>:<select class="row-time-select" data-role="${role}" data-part="minute" data-date="${date||''}">${minOpts}</select></span>`;
+// e.g. 0.483 -> "29분", 2.5 -> "2시간 30분"
+function minutesPart(hDecimal){
+  const totalMinutes = Math.round(Math.abs(hDecimal) * 60);
+  const hh = Math.floor(totalMinutes / 60);
+  const mm = totalMinutes % 60;
+  return hh > 0 ? `${hh}시간 ${mm}분` : `${mm}분`;
 }
-
-function handleTimeSelectChange(e){
-  if (!state) return;
-  const t = e.target;
-  if (!t.classList.contains('row-time-select')) return;
-  const pair = t.closest('.time-select-pair');
-  const hourSel = pair.querySelector('[data-part="hour"]');
-  const minSel = pair.querySelector('[data-part="minute"]');
-  const value = `${hourSel.value}:${minSel.value}`;
-  const role = t.dataset.role;
-  const date = t.dataset.date;
-  if (role === 'checkout') state.todayCheckoutTime = value;
-  else if (role === 'partialCheckout') state.partialCheckoutOverrides[date] = value;
-  else if (role === 'arrival') state.mandatoryStartOverrides[date] = value;
-  else if (role === 'default') state.mandatoryDefaultStart = value;
-  renderSimAndTable();
-}
-document.getElementById('tbody').addEventListener('change', handleTimeSelectChange);
-document.getElementById('mandatoryStartWrap').addEventListener('change', handleTimeSelectChange);
-document.getElementById('addPlanBtn').addEventListener('click', () => {
-  const dateEl = document.getElementById('planDate');
-  const date = dateEl.value;
-  if (!date){ alert('날짜를 선택해 주세요.'); return; }
-  let hours;
-  if (planType.value === 'custom'){
-    hours = parseFloat(planCustom.value);
-    if (isNaN(hours) || hours <= 0){ alert('차감 시간을 입력해 주세요.'); return; }
-  } else {
-    hours = parseFloat(planType.value);
-  }
-  plans.push({ id: planIdSeq++, date, hours });
-  renderPlanList();
-  renderSimAndTable();
-});
-
-function handleFile(file){
-  fileNameEl.textContent = '📄 ' + file.name;
-  plans = [];
-  const reader = new FileReader();
-  reader.onload = e => {
-    try{
-      const data = new Uint8Array(e.target.result);
-      const wb = XLSX.read(data, {type:'array', cellText:true});
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, {header:1, raw:true, defval:''});
-      parseAndBuildState(rows);
-    }catch(err){
-      alert('파일을 읽는 중 문제가 발생했습니다: ' + err.message);
-      console.error(err);
-    }
-  };
-  reader.readAsArrayBuffer(file);
-}
+// +2.15 / -0.92 (소수점 둘째 자리)
+function fmtSigned(h){ let r = Math.round(h * 100) / 100; if (r === 0) r = 0; return (r >= 0 ? '+' : '') + r.toFixed(2); }
 
 // 두 시각(소수 시간) 사이 실제 근무시간. 12~13시 점심시간과 겹치는 만큼은 근무시간에서 뺀다.
 function workHoursBetween(startHour, endHour){
@@ -469,8 +639,141 @@ function workHoursBetween(startHour, endHour){
   const overlap = Math.max(0, Math.min(endHour, LUNCH_END) - Math.max(startHour, LUNCH_START));
   return Math.max(0, endHour - startHour - overlap);
 }
+// 출근 시각부터 neededHours만큼 일하려면 언제 퇴근해야 하는지(점심 제외). 하루 안에 못 채우면 null.
+function earliestCheckoutFor(startHour, neededHours){
+  if (neededHours <= 0) return startHour;
+  if (workHoursBetween(startHour, 24) < neededHours) return null;
+  let lo = startHour, hi = 24;
+  for (let i = 0; i < 40; i++){ const mid = (lo + hi) / 2; if (workHoursBetween(startHour, mid) >= neededHours) hi = mid; else lo = mid; }
+  return hi;
+}
+function hourToHHMMCeil5(h){
+  let mins = Math.ceil(h * 60 / 5 - 1e-9) * 5;
+  if (mins > 23 * 60 + 55) mins = 23 * 60 + 55;
+  return `${pad2(Math.floor(mins / 60))}:${pad2(mins % 60)}`;
+}
 
-function parseAndBuildState(rows){
+/* ---------- 시:분(5분 단위) 드롭다운 ---------- */
+// role: "checkout"(오늘 퇴근) / "partialCheckout"(언플러그 날 퇴근) / "arrival"(언플러그 날 출근) / "default"(언플러그 기본 출근)
+const TIME_LABEL = { checkout: '오늘 퇴근', partialCheckout: '퇴근', arrival: '출근', default: '기본 출근' };
+function timeSelectHTML(role, date, value){
+  const [vh, vm] = (isHHMM(value) ? value : '10:00').split(':');
+  const label = TIME_LABEL[role] || '시각';
+  let hourOpts = '';
+  for (let h = 0; h < 24; h++){ const hh = pad2(h); hourOpts += `<option value="${hh}"${hh === vh ? ' selected' : ''}>${hh}</option>`; }
+  let minOpts = '';
+  for (let m = 0; m < 60; m += 5){ const mm = pad2(m); minOpts += `<option value="${mm}"${mm === vm ? ' selected' : ''}>${mm}</option>`; }
+  return `<span class="time-select-pair"><select class="row-time-select" aria-label="${label} 시" data-role="${role}" data-part="hour" data-date="${date || ''}">${hourOpts}</select>:<select class="row-time-select" aria-label="${label} 분" data-role="${role}" data-part="minute" data-date="${date || ''}">${minOpts}</select></span>`;
+}
+function handleTimeSelectChange(e){
+  if (!state) return;
+  const t = e.target;
+  if (!t.classList.contains('row-time-select')) return;
+  const pair = t.closest('.time-select-pair');
+  const value = `${pair.querySelector('[data-part="hour"]').value}:${pair.querySelector('[data-part="minute"]').value}`;
+  const role = t.dataset.role;
+  const date = t.dataset.date;
+  if (role === 'checkout'){ state.todayCheckoutTime = value; state.checkoutUndo = null; }
+  else if (role === 'partialCheckout') state.partialCheckoutOverrides[date] = value;
+  else if (role === 'arrival') state.mandatoryStartOverrides[date] = value;
+  else if (role === 'default') state.mandatoryDefaultStart = value;
+  saveMonthState();
+  renderSimAndTable();
+}
+$('tbody').addEventListener('change', handleTimeSelectChange);
+$('mandatoryStartWrap').addEventListener('change', handleTimeSelectChange);
+
+/* ---------- 월별 저장 (계획·시간 설정) ---------- */
+function saveMonthState(){
+  if (!state || state.isSample) return;
+  lsSet(LS_PREFIX + state.targetYm, {
+    plans: plans.map(p => ({ date: p.date, hours: p.hours })),
+    mandatoryStartOverrides: state.mandatoryStartOverrides,
+    partialCheckoutOverrides: state.partialCheckoutOverrides,
+    mandatoryDefaultStart: state.mandatoryDefaultStart,
+    todayCheckout: state.todayCheckoutTime ? { date: state.todayStr, time: state.todayCheckoutTime } : null,
+    checkoutUndo: state.checkoutUndo ? { date: state.todayStr, from: state.checkoutUndo.from, fromLabel: state.checkoutUndo.fromLabel, to: state.checkoutUndo.to } : null
+  });
+}
+function loadMonthState(){
+  if (!state || state.isSample) return;
+  const s = lsGet(LS_PREFIX + state.targetYm);
+  if (!s || typeof s !== 'object') return;
+  const byDate = {};
+  state.entries.forEach(e => { byDate[e.dateStr] = e; });
+  if (Array.isArray(s.plans)){
+    // 이미 지난 날짜의 계획은 실제 기록에 반영돼 있으므로 다시 빼지 않는다
+    plans = s.plans
+      .filter(p => p && byDate[p.date] && !byDate[p.date].isPast && typeof p.hours === 'number' && p.hours > 0 && p.hours <= 8)
+      .map((p, i) => ({ id: i + 1, date: p.date, hours: p.hours }));
+    planIdSeq = plans.length + 1;
+  }
+  const copyTimes = (src, dst) => {
+    if (src && typeof src === 'object') Object.keys(src).forEach(k => { if (byDate[k] && isHHMM(src[k])) dst[k] = src[k]; });
+  };
+  copyTimes(s.mandatoryStartOverrides, state.mandatoryStartOverrides);
+  copyTimes(s.partialCheckoutOverrides, state.partialCheckoutOverrides);
+  if (isHHMM(s.mandatoryDefaultStart)) state.mandatoryDefaultStart = s.mandatoryDefaultStart;
+  if (s.todayCheckout && s.todayCheckout.date === state.todayStr && isHHMM(s.todayCheckout.time)) state.todayCheckoutTime = s.todayCheckout.time;
+  const u = s.checkoutUndo;
+  if (u && u.date === state.todayStr && isHHMM(u.to) && u.to === state.todayCheckoutTime){
+    state.checkoutUndo = { from: isHHMM(u.from) ? u.from : null, fromLabel: isHHMM(u.fromLabel) ? u.fromLabel : '18:00', to: u.to };
+  }
+}
+
+/* ---------- 파일 올리기 ---------- */
+const fileInput = $('fileInput');
+function showError(msg){ if ($('result').hidden) $('emptyError').textContent = msg; else alert(msg); }
+function clearErrors(){ $('emptyError').textContent = ''; }
+
+$('dropzone').addEventListener('click', () => fileInput.click());
+$('dropzone').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); fileInput.click(); } });
+$('pickBtn').addEventListener('click', e => { e.stopPropagation(); fileInput.click(); });
+$('sampleBtn').addEventListener('click', e => { e.stopPropagation(); loadSample(); });
+$('changeFileBtn').addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => { const f = e.target.files && e.target.files[0]; if (f) handleFile(f); fileInput.value = ''; });
+
+// 화면 어디에 끌어다 놓아도 새 파일로 계산
+let dragDepth = 0;
+const hasFiles = e => !!e.dataTransfer && Array.from(e.dataTransfer.types || []).indexOf('Files') !== -1;
+function setDragUI(on){
+  if ($('result').hidden) $('dropzone').classList.toggle('drag', on);
+  else $('dropOverlay').classList.toggle('show', on);
+}
+window.addEventListener('dragenter', e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth++; setDragUI(true); });
+window.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
+window.addEventListener('dragleave', e => { if (!hasFiles(e)) return; dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) setDragUI(false); });
+window.addEventListener('drop', e => {
+  if (!hasFiles(e)) return;
+  e.preventDefault(); dragDepth = 0;
+  $('dropzone').classList.remove('drag'); $('dropOverlay').classList.remove('show');
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+
+function handleFile(file){
+  clearErrors();
+  if (!/\.xlsx?$/i.test(file.name)){ showError('엑셀 파일(.xls, .xlsx)만 올릴 수 있어요.'); return; }
+  if (typeof XLSX === 'undefined'){ showError('엑셀을 읽는 도구를 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellText: true });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
+      parseAndBuildState(rows, { fileName: file.name, isSample: false });
+    } catch (err){
+      console.error(err);
+      showError('파일을 읽는 중 문제가 생겼어요: ' + err.message);
+    }
+  };
+  reader.onerror = () => showError('파일을 읽지 못했어요. 다시 시도해 주세요.');
+  reader.readAsArrayBuffer(file);
+}
+
+/* ---------- 엑셀 행 → 이번 달 상태 ---------- */
+function parseAndBuildState(rows, meta){
+  meta = meta || {};
   const dateRe = /^(\d{4})-(\d{2})-(\d{2})\((.)\)$/;
   const raw = [];
 
@@ -482,55 +785,56 @@ function parseAndBuildState(rows){
     const weekday = m[4];
     const start = (row[1] || '').toString().trim();
     const end = (row[2] || '').toString().trim();
-    let hoursRaw = row[3];
+    const hoursRaw = row[3];
     let hours = 0;
     if (typeof hoursRaw === 'number') hours = hoursRaw * 24;
-    else if (typeof hoursRaw === 'string' && hoursRaw.trim() !== '') {
+    else if (typeof hoursRaw === 'string' && hoursRaw.trim() !== ''){
       const f = parseFloat(hoursRaw);
       if (!isNaN(f)) hours = f * 24;
     }
     let status = '';
     for (let i = row.length - 1; i >= 4; i--){
       const v = (row[i] || '').toString().trim();
-      if (v) { status = v; break; }
+      if (v){ status = v; break; }
     }
-    raw.push({dateStr, weekday, start, end, hours, status, ym: `${m[1]}-${m[2]}`});
+    raw.push({ dateStr, weekday, start, end, hours, status, ym: `${m[1]}-${m[2]}` });
   });
 
   if (!raw.length){
-    alert('날짜 형식의 근태 데이터를 찾지 못했습니다. 원본 근태 엑셀 파일인지 확인해 주세요.');
+    showError('날짜 형식의 근태 데이터를 찾지 못했어요. 회사 근태 시스템에서 받은 원본 엑셀인지 확인해 주세요.');
     return;
   }
 
   const counts = {};
-  raw.forEach(e => counts[e.ym] = (counts[e.ym]||0) + 1);
-  const targetYm = Object.keys(counts).reduce((a,b) => counts[b] > counts[a] ? b : a);
+  raw.forEach(e => { counts[e.ym] = (counts[e.ym] || 0) + 1; });
+  const targetYm = Object.keys(counts).reduce((a, b) => counts[b] > counts[a] ? b : a);
   const [ty, tm] = targetYm.split('-').map(Number);
   const hasHolidayData = Object.keys(HOLIDAYS).some(d => d.startsWith(targetYm));
 
-  const today = new Date(); today.setHours(0,0,0,0);
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const todayStr = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`;
 
   const daysInMonth = new Date(ty, tm, 0).getDate();
   let targetWeekdayCount = 0;
+  let weekdayHolidayCount = 0;
   const holidayDatesInMonth = [];
   const entries = [];
 
   for (let d = 1; d <= daysInMonth; d++){
-    const dateStr = `${targetYm}-${String(d).padStart(2,'0')}`;
+    const dateStr = `${targetYm}-${pad2(d)}`;
     const dt = new Date(ty, tm - 1, d);
     const dow = dt.getDay();
     const isWeekend = (dow === 0 || dow === 6);
     const isHoliday = !!HOLIDAYS[dateStr];
     const isLaborDay = !!LABOR_DAY[dateStr];
     if (!isWeekend && !isHoliday) targetWeekdayCount++;
-    if (isHoliday) holidayDatesInMonth.push(`${dateStr}(${HOLIDAYS[dateStr]})`);
+    if (isHoliday){ holidayDatesInMonth.push(dateStr); if (!isWeekend) weekdayHolidayCount++; }
 
     const found = raw.find(r => r.dateStr === dateStr);
-    const isPast = dt < today; // strictly before today - today is still "in progress", not yet due
+    const isPast = dt < today; // 오늘은 아직 진행 중이라 지난 날로 치지 않음
 
     entries.push({
-      dateStr, weekday: found ? found.weekday : '월화수목금토일'[dow===0?6:dow-1],
+      dateStr, weekday: found ? found.weekday : WD[dow],
       start: found ? found.start : '', end: found ? found.end : '',
       recordedHours: found ? found.hours : 0,
       status: found ? found.status : '',
@@ -539,276 +843,524 @@ function parseAndBuildState(rows){
     });
   }
 
-  // 평소 출근 시각의 평균 (과거 실제 기록만) - 언플러그 데이처럼 오전 근무만 따로 예측해야 할 때 기준으로 사용
+  // 평소 출근 시각의 평균 (과거 실제 기록만) - 오늘 출근 기록이 없을 때 예상 계산에 사용
   const startTimes = entries
     .filter(e => e.isPast && e.start)
-    .map(e => { const m = e.start.match(/^(\d{1,2}):(\d{2})/); return m ? parseInt(m[1],10) + parseInt(m[2],10)/60 : null; })
+    .map(e => { const m = e.start.match(/^(\d{1,2}):(\d{2})/); return m ? parseInt(m[1], 10) + parseInt(m[2], 10) / 60 : null; })
     .filter(v => v !== null);
-  const avgStartHour = startTimes.length ? startTimes.reduce((a,b)=>a+b,0) / startTimes.length : 10;
+  const avgStartHour = startTimes.length ? startTimes.reduce((a, b) => a + b, 0) / startTimes.length : 10;
 
-  state = { entries, targetYm, ty, tm, targetWeekdayCount, targetHours: targetWeekdayCount * 8,
-            hasHolidayData, holidayDatesInMonth, today, todayStr, avgStartHour,
-            todayCheckoutTime: null, mandatoryStartOverrides: {},
-            // 언플러그 기본 출근시각: 보통 출근시각(10:00)으로 시작하고, 특정 날짜만 다르게 출근해야 하면
-            // 그 날짜만 따로 조정하면 된다.
-            mandatoryDefaultStart: '10:00',
-            partialCheckoutOverrides: {} };
+  state = {
+    entries, targetYm, ty, tm, targetWeekdayCount, targetHours: targetWeekdayCount * 8,
+    hasHolidayData, holidayDatesInMonth, today, todayStr, avgStartHour,
+    todayCheckoutTime: null, mandatoryStartOverrides: {},
+    mandatoryDefaultStart: '10:00',   // 언플러그 기본 출근시각 (날짜별로 따로 조정 가능)
+    partialCheckoutOverrides: {},
+    isSample: !!meta.isSample, fileName: meta.fileName || ''
+  };
+  plans = []; planIdSeq = 1;
+  loadMonthState();
 
-  document.getElementById('cMonth').textContent = `${ty}년 ${tm}월`;
-  document.getElementById('planDate').min = `${targetYm}-01`;
-  document.getElementById('planDate').max = `${targetYm}-${String(daysInMonth).padStart(2,'0')}`;
+  // 화면 전환
+  clearErrors(); setPlanError('');
+  $('emptyState').hidden = true;
+  $('result').hidden = false;
+  $('fileChip').hidden = false;
+  $('fileName').textContent = state.isSample ? '샘플 데이터' : state.fileName;
+  $('fileName').title = state.isSample ? '샘플 데이터' : state.fileName;
+  $('changeFileBtn').textContent = state.isSample ? '내 파일 올리기' : '다른 파일';
 
-  const holidayNotice = document.getElementById('holidayNotice');
+  $('cMonth').textContent = `${ty}년 ${tm}월`;
+  $('heroMeta').textContent = `평일 ${targetWeekdayCount}일` + (weekdayHolidayCount ? ` · 공휴일 ${weekdayHolidayCount}일 제외` : '');
+  $('cTargetSub').textContent = `평일 ${targetWeekdayCount}일 × 8시간`;
+
+  const pd = $('planDate');
+  pd.min = `${targetYm}-01`;
+  pd.max = `${targetYm}-${pad2(daysInMonth)}`;
+  setDefaultPlanDate();
+
+  const hh = $('heroHoliday');
   if (hasHolidayData){
-    holidayNotice.textContent = `목표시간 = 평일(${targetWeekdayCount}일) × 8시간, 공휴일 제외 완료` +
-      (holidayDatesInMonth.length ? ` — 제외된 공휴일: ${holidayDatesInMonth.join(', ')}` : ' (해당 월 공휴일 없음)');
+    const list = holidayDatesInMonth.map(d => `${fmtDate(d)} ${HOLIDAYS[d]}`).join(', ');
+    hh.className = 's2';
+    hh.textContent = `목표시간은 평일 ${targetWeekdayCount}일 × 8시간이에요. ` + (list ? `공휴일: ${list}` : '이번 달은 공휴일이 없어요.');
   } else {
-    holidayNotice.textContent = `⚠ ${ty}년 공휴일 데이터가 없어 주말만 제외하고 평일 기준으로 계산했습니다. 회사 근무일 기준과 다를 수 있습니다.`;
+    hh.className = 's2 warn';
+    hh.textContent = `${ty}년 공휴일 데이터가 없어서 주말만 빼고 계산했어요. 회사 근무일 기준과 다를 수 있어요.`;
   }
 
+  $('jumpTodayBtn').hidden = !entries.some(e => e.isToday);
   renderPlanList();
   renderSimAndTable();
-  resultEl.style.display = 'block';
-
-  setTimeout(() => {
-    const todayRow = document.querySelector('tr.today-row');
-    if (todayRow) todayRow.scrollIntoView({block:'center', behavior:'smooth'});
-  }, 100);
+  window.scrollTo(0, 0);
 }
 
-function renderPlanList(){
-  const ul = document.getElementById('planList');
-  if (!plans.length){ ul.innerHTML = '<li style="background:none;color:var(--muted);justify-content:center;">아직 추가된 계획이 없습니다</li>'; return; }
-  ul.innerHTML = plans
-    .slice().sort((a,b)=>a.date.localeCompare(b.date))
-    .map(p => `<li data-id="${p.id}"><span>${p.date} · -${p.hours}h</span><span class="x" onclick="removePlan(${p.id})">✕</span></li>`)
-    .join('');
+/* ---------- 반차·패스 계획 ---------- */
+function setPlanError(msg){ $('planError').textContent = msg; }
+function setDefaultPlanDate(){
+  if (!state) return;
+  const planned = new Set(plans.map(p => p.date));
+  const cand = state.entries.filter(e => !e.isPast && !e.isWeekend && !e.isHoliday && !planned.has(e.dateStr));
+  const next = cand.find(e => !e.isToday) || cand[0];
+  $('planDate').value = next ? next.dateStr : '';
+}
+$('planSeg').addEventListener('click', e => {
+  const b = e.target.closest('button[data-hours]');
+  if (!b) return;
+  planMode = b.dataset.hours;
+  $('planSeg').querySelectorAll('button').forEach(x => {
+    const on = x === b;
+    x.classList.toggle('on', on);
+    x.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+  $('planCustom').hidden = planMode !== 'custom';
+  if (planMode === 'custom') $('planCustom').focus();
+  setPlanError('');
+});
+$('addPlanBtn').addEventListener('click', addPlan);
+['planDate', 'planCustom'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') addPlan(); }));
+$('planList').addEventListener('click', e => {
+  const b = e.target.closest('[data-remove]');
+  if (b) removePlan(Number(b.dataset.remove));
+});
+
+function addPlan(){
+  if (!state) return;
+  setPlanError('');
+  const date = $('planDate').value;
+  if (!date) return setPlanError('날짜를 선택해 주세요.');
+  const en = state.entries.find(x => x.dateStr === date);
+  if (!en) return setPlanError(`${state.tm}월 안의 날짜만 넣을 수 있어요.`);
+  if (en.isWeekend || en.isHoliday) return setPlanError('주말·공휴일은 원래 근무하지 않는 날이에요.');
+  if (en.isPast) return setPlanError('지난 날짜는 실제 기록으로 계산돼요.');
+  const hours = planMode === 'custom' ? parseFloat($('planCustom').value) : parseFloat(planMode);
+  if (!(hours > 0)) return setPlanError('뺄 시간을 입력해 주세요.');
+  if (hours > 8) return setPlanError('하루에 최대 8시간까지 뺄 수 있어요.');
+  const exist = plans.find(p => p.date === date);
+  if (exist) exist.hours = hours;
+  else plans.push({ id: planIdSeq++, date, hours });
+  saveMonthState();
+  renderPlanList();
+  renderSimAndTable();
+  setDefaultPlanDate();
 }
 function removePlan(id){
   plans = plans.filter(p => p.id !== id);
+  saveMonthState();
   renderPlanList();
   renderSimAndTable();
 }
-
+function renderPlanList(){
+  const ul = $('planList');
+  if (!plans.length){ ul.innerHTML = '<li class="chips-empty">아직 넣은 계획이 없어요</li>'; return; }
+  ul.innerHTML = plans.slice().sort((a, b) => a.date.localeCompare(b.date)).map(p =>
+    `<li class="chip"><span>${fmtDate(p.date)} ${planTypeLabel(p.hours)} −${p.hours}h</span><button type="button" data-remove="${p.id}" aria-label="${md(p.date)} 계획 삭제">✕</button></li>`
+  ).join('');
+}
 function planDeductionFor(dateStr){
-  return plans.filter(p => p.date === dateStr).reduce((s,p) => s + p.hours, 0);
+  return plans.filter(p => p.date === dateStr).reduce((s, p) => s + p.hours, 0);
 }
 
-// e.g. 0.483 -> "0시간 29분"
-function minutesPart(hDecimal){
-  const abs = Math.abs(hDecimal);
-  const totalMinutes = Math.round(abs * 60);
-  const hh = Math.floor(totalMinutes / 60);
-  const mm = totalMinutes % 60;
-  return hh > 0 ? `${hh}시간 ${mm}분` : `${mm}분`;
+/* ---------- 표 보기 옵션 ---------- */
+const hideOffEl = $('hideOff');
+hideOffEl.checked = !!lsGet('whc:hideOff');
+function applyHideOff(){ $('tbody').classList.toggle('hide-off', hideOffEl.checked); }
+hideOffEl.addEventListener('change', () => { lsSet('whc:hideOff', hideOffEl.checked); applyHideOff(); });
+applyHideOff();
+$('jumpTodayBtn').addEventListener('click', () => {
+  const r = document.querySelector('tr.today-row');
+  if (r) r.scrollIntoView({ block: 'center', behavior: 'smooth' });
+});
+// 메모: 마우스를 행에 올리면 툴팁으로 보여줌 (터치 기기는 칸 안에 그대로 표시)
+const MEMO_ICON = '<svg class="memo-ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>';
+const tipEl = $('tip');
+const canHover = () => window.matchMedia && window.matchMedia('(hover:hover)').matches;
+$('tbody').addEventListener('mouseover', e => {
+  const cell = e.target.closest('td[data-tip]');
+  if (!cell || !canHover()) return;
+  const key = cell.closest('tr').dataset.date + cell.className;
+  if (tipEl.dataset.for === key && !tipEl.hidden) return;
+  tipEl.textContent = cell.dataset.tip;
+  tipEl.dataset.for = key;
+  tipEl.hidden = false;
+  const anchor = cell.querySelector('.memo-ico') || cell.querySelector('.h-main') || cell;
+  const r = anchor.getBoundingClientRect();
+  const tw = tipEl.offsetWidth, th = tipEl.offsetHeight;
+  let left = r.right + 8;                       // 기본: 아이콘 오른쪽 (완료 배지를 가리지 않게)
+  let top = r.top + r.height / 2 - th / 2;
+  if (left + tw > window.innerWidth - 8){       // 오른쪽 공간이 없으면 아이콘 아래쪽
+    left = Math.max(8, Math.min(r.left, window.innerWidth - tw - 8));
+    top = r.bottom + 6;
+    if (top + th > window.innerHeight - 8) top = r.top - th - 6;
+  }
+  tipEl.style.left = left + 'px';
+  tipEl.style.top = Math.max(8, top) + 'px';
+});
+$('tbody').addEventListener('mouseout', e => {
+  const cell = e.target.closest('td[data-tip]');
+  if (cell && !cell.contains(e.relatedTarget)) { tipEl.hidden = true; tipEl.dataset.for = ''; }
+});
+window.addEventListener('scroll', () => { tipEl.hidden = true; tipEl.dataset.for = ''; }, { passive: true });
+
+$('heroToday').addEventListener('click', e => {
+  if (!state) return;
+  const setBtn = e.target.closest('[data-set-checkout]');
+  const undoBtn = e.target.closest('[data-undo-checkout]');
+  if (setBtn){
+    // 바꾸기 전 값을 기억해 두었다가 되돌릴 수 있게
+    state.checkoutUndo = { from: state.todayCheckoutTime, fromLabel: state.todayCheckoutTime || '18:00', to: setBtn.dataset.setCheckout };
+    state.todayCheckoutTime = setBtn.dataset.setCheckout;
+  } else if (undoBtn){
+    state.todayCheckoutTime = undoBtn.dataset.undoCheckout || null;
+    state.checkoutUndo = null;
+  } else return;
+  saveMonthState();
+  renderSimAndTable();
+  flashTodayCheckout();
+});
+// 바뀐 퇴근 시간이 표의 오늘 줄에서 잠깐 반짝이게
+function flashTodayCheckout(){
+  const el = document.querySelector('tr.today-row td.c-out .time-select-pair');
+  if (!el) return;
+  el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
 }
+
+/* ---------- 계산 + 화면 그리기 ---------- */
+const CLOCK_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+const badge = (cls, text) => `<span class="badge ${cls}">${text}</span>`;
+
 function renderSimAndTable(){
   if (!state) return;
   const { entries } = state;
+  const dash = '<span class="dash">–</span>';
 
   // "오늘까지 실제" 누적치 - 일반 날짜는 실제 기록만(가정 없음), 언플러그/패스 날짜는 스프레드시트에
   // 블록 시간만 기록되고 오전 근무는 애초에 기록되지 않으므로 그 재구성값을 그대로 실제치로 인정한다.
   let cumActualToDate = 0;
   const missing = [];
 
-  // ---- month-end projection (includes assumed 8h on unrecorded FUTURE weekdays + plan deductions) ----
+  // 월말 예상 (기록 없는 남은 평일은 8시간 가정 + 계획 차감)
   let cumTarget = 0, cumEffective = 0;
   const rowsHtml = [];
-  // days that could still absorb extra hours: future, weekday, not holiday, no plan on it,
-  // AND no existing schedule/status already fixing that day (e.g. 재택 예정) - 재택 때는 보통 추가근무 안 하므로 제외
+  // 남은 시간을 채울 수 있는 날: 지나지 않은 평일 중 계획/메모(재택 예정 등)가 없는 날
   let futureAdjustableDays = 0;
-  const upcomingPartialDates = []; // 아직 지나지 않은 언플러그/패스 날짜 - 안내 문구용
+  const upcomingPartialDates = [];
+  let paceDiff = null;
+  let daysLeft = 0;
+  let todayInfo = null;
+  const effectiveTodayCheckout = state.todayCheckoutTime || '18:00';
 
   entries.forEach(en => {
-    const dayTarget = (en.isWeekend || en.isHoliday) ? 0 : 8;
+    const isOff = en.isWeekend || en.isHoliday;
+    const dayTarget = isOff ? 0 : 8;
     cumTarget += dayTarget;
+    if (!en.isPast && !isOff) daysLeft++;
 
-    // 언플러그 데이 같은 "부분 시간대 메모"는 하루 총 근무시간이 아니라 그 중 일부 구간(예: 2h) 표시일 뿐.
-    // 언플러그/패스를 쓰는 날은 보통 출근을 평소보다 일찍 해야 하므로, 평소 평균 출근시각이 아니라
-    // 별도로 지정한 "필수 출근시각"부터 언플러그 시작 전까지를 오전 근무시간으로 계산한다.
+    // 언플러그/패스 같은 "부분 시간대 메모"는 하루 전체가 아니라 그 중 일부 구간(예: 2h)만 기록된 것.
+    // 출근 시각부터 언플러그 시작 전까지를 따로 더해서 그날 근무시간을 재구성한다.
     const partialKeywordMatch = en.status ? en.status.match(/언플러그|패스/) : null;
     const isPartialNote = !!partialKeywordMatch && en.recordedHours < 8;
+    const kw = isPartialNote ? partialKeywordMatch[0] : '';
 
-    // 언플러그/패스 날짜별 출근(필수 출근시각): 이 날짜에 직접 설정한 값이 있으면 그걸 쓰고, 없으면 전체 기본값을 쓴다.
+    // 언플러그/패스 날짜별 출근시각: 날짜별로 정한 값이 있으면 그걸, 없으면 기본값
     const effectiveArrival = isPartialNote ? (state.mandatoryStartOverrides[en.dateStr] || state.mandatoryDefaultStart) : null;
-
-    if (isPartialNote && !en.isPast) {
-      const [, mm2, dd2] = en.dateStr.split('-');
-      upcomingPartialDates.push({ dateLabel: `${parseInt(mm2,10)}월 ${parseInt(dd2,10)}일`, keyword: partialKeywordMatch[0], arrival: effectiveArrival, rawDate: en.dateStr });
+    if (isPartialNote && !en.isPast){
+      upcomingPartialDates.push({ dateLabel: fmtDate(en.dateStr), keyword: kw, arrival: effectiveArrival, rawDate: en.dateStr });
     }
+
     let partialMorningHours = 0;
-    let blockEndTime = null; // 언플러그/패스 구간이 끝나는 시각(메모에서 파싱) - 퇴근시각 기본값으로 사용
-    if (isPartialNote) {
+    let blockEndTime = null; // 언플러그/패스 구간이 끝나는 시각(메모에서 파싱) - 퇴근시각 기본값
+    if (isPartialNote){
       const [mh, mm] = effectiveArrival.split(':').map(Number);
       const mandatoryStartHour = mh + mm / 60;
       const timeMatch = en.status.match(/(\d{1,2}):(\d{2})\s*~\s*(\d{1,2}):(\d{2})/);
-      if (timeMatch) {
-        const blockStartHour = parseInt(timeMatch[1],10) + parseInt(timeMatch[2],10)/60;
+      if (timeMatch){
+        const blockStartHour = parseInt(timeMatch[1], 10) + parseInt(timeMatch[2], 10) / 60;
         partialMorningHours = workHoursBetween(mandatoryStartHour, blockStartHour);
-        blockEndTime = `${timeMatch[3].padStart(2,'0')}:${timeMatch[4].padStart(2,'0')}`;
+        blockEndTime = `${timeMatch[3].padStart(2, '0')}:${timeMatch[4].padStart(2, '0')}`;
       } else {
         partialMorningHours = 4; // 시간 정보를 못 찾으면 기본값
       }
     }
 
-    // 언플러그/패스 날짜의 퇴근시각을 직접 지정했으면, 오전+블록 계산 대신 출근~퇴근 실차이로 총 시간을 계산한다.
+    // 언플러그/패스 날의 퇴근시각을 직접 정했으면 출근~퇴근 실차이로 계산
     let partialCheckoutHours = null;
-    if (isPartialNote && state.partialCheckoutOverrides[en.dateStr]) {
+    if (isPartialNote && state.partialCheckoutOverrides[en.dateStr]){
       const [ch, cm] = state.partialCheckoutOverrides[en.dateStr].split(':').map(Number);
-      const checkoutHour = ch + cm / 60;
       const [ah, am] = effectiveArrival.split(':').map(Number);
-      const arrivalHour = ah + am / 60;
-      partialCheckoutHours = workHoursBetween(arrivalHour, checkoutHour);
+      partialCheckoutHours = workHoursBetween(ah + am / 60, ch + cm / 60);
     }
 
-    // 오늘 아직 퇴근 전이면, 퇴근란에 표시된 "예상 퇴근시각"으로 예상 근무시간을 계산한다 (8시간 고정 가정 대신).
-    // 사용자가 직접 바꾸지 않았어도 화면에 보이는 기본값(18:00)을 그대로 계산에 반영한다.
+    // 오늘 아직 퇴근 전이면, 퇴근란의 예상 퇴근시각(기본 18:00)으로 예상 근무시간 계산
     let todayCheckoutHours = null;
-    const effectiveTodayCheckout = state.todayCheckoutTime || '18:00';
-    if (en.isToday && !isPartialNote && en.recordedHours === 0) {
+    let todayStartHour = null;
+    if (en.isToday && !isPartialNote && en.recordedHours === 0){
       const [ch, cm] = effectiveTodayCheckout.split(':').map(Number);
-      const checkoutHour = ch + cm / 60;
       let startHour = null;
-      if (en.start) {
+      if (en.start){
         const sm = en.start.match(/^(\d{1,2}):(\d{2})/);
-        if (sm) startHour = parseInt(sm[1],10) + parseInt(sm[2],10)/60;
+        if (sm) startHour = parseInt(sm[1], 10) + parseInt(sm[2], 10) / 60;
       }
       if (startHour === null) startHour = state.avgStartHour;
-      todayCheckoutHours = workHoursBetween(startHour, checkoutHour);
+      todayStartHour = startHour;
+      todayCheckoutHours = workHoursBetween(startHour, ch + cm / 60);
     }
 
     let base;
     let isAssumed = false;
-    if (en.isWeekend || en.isHoliday) base = 0;
-    else if (isPartialNote) {
+    if (isOff) base = 0;
+    else if (isPartialNote){
       base = partialCheckoutHours !== null ? partialCheckoutHours : (en.recordedHours + partialMorningHours);
       isAssumed = true;
     }
-    else if (todayCheckoutHours !== null) { base = todayCheckoutHours; isAssumed = true; }
+    else if (todayCheckoutHours !== null){ base = todayCheckoutHours; isAssumed = true; }
     else if (en.recordedHours > 0 || en.status) base = en.recordedHours;
-    else if (!en.isPast) { base = 8; isAssumed = true; }
-    else base = 0; // past, missing
+    else if (!en.isPast){ base = 8; isAssumed = true; }
+    else base = 0; // 지난 날인데 기록 없음
 
-    // "오늘까지 실제" 누적 - 과거 날짜는 위에서 구한 base(언플러그 재구성값 포함)를 그대로 인정하고,
-    // 오늘은 아직 확정 안 된 예상 퇴근시간 기반 추정치는 제외하고 실제 기록된 시간만 더한다(언플러그는 예외).
+    // "오늘까지 실제" - 지난 날은 base(언플러그 재구성값 포함), 오늘은 실제 기록만(언플러그는 예외)
     if (en.isPast) cumActualToDate += base;
     else if (en.isToday) cumActualToDate += (isPartialNote ? base : en.recordedHours);
-    if (en.isPast && !en.isWeekend && !en.isHoliday && en.recordedHours === 0 && !en.status){
-      missing.push(en.dateStr);
-    }
+    if (en.isPast && !isOff && en.recordedHours === 0 && !en.status) missing.push(en.dateStr);
 
     const ded = planDeductionFor(en.dateStr);
     const effective = Math.max(0, base - ded);
     cumEffective += effective;
     const diff = cumEffective - cumTarget;
+    if (en.isPast || en.isToday) paceDiff = diff;
+    if (todayCheckoutHours !== null && !isOff) todayInfo = { startHour: todayStartHour, base, ded, effective };
 
-    const isFreeWeekday = !en.isPast && !en.isWeekend && !en.isHoliday && ded === 0 && !en.status;
+    const isFreeWeekday = !en.isPast && !isOff && ded === 0 && !en.status;
     if (isFreeWeekday) futureAdjustableDays++;
 
-    let statusBadge, rowClass = [];
+    /* ----- 행 그리기 ----- */
+    const rowClass = [];
+    if (isOff) rowClass.push('off-day');
+    if (ded > 0) rowClass.push('planned');
     if (en.isToday) rowClass.push('today-row');
-    if (en.isWeekend) { statusBadge = `<span class="badge muted">주말</span>`; rowClass.push('weekend'); }
-    else if (en.isHoliday) { statusBadge = `<span class="badge muted">공휴일</span>`; rowClass.push('weekend'); }
-    else if (ded > 0) { statusBadge = `<span class="badge blue">적용됨</span>`; rowClass.push('planned'); }
-    else if (en.recordedHours > 0 || en.status) { statusBadge = `<span class="badge ok">완료</span>`; }
-    else if (en.isPast) { statusBadge = `<span class="badge warn">미기록</span>`; rowClass.push('missing'); }
-    else if (en.isToday) { statusBadge = `<span class="badge blue">진행중</span>`; }
-    else { statusBadge = `<span class="badge muted">예정</span>`; }
 
-    let noteText = en.status;
-    if (en.isHoliday) noteText = (noteText ? noteText + ' · ' : '') + '공휴일(' + HOLIDAYS[en.dateStr] + ')';
-    if (en.isLaborDay) noteText = (noteText ? noteText + ' · ' : '') + '근로자의날';
+    let statusBadge;
+    if (en.isWeekend) statusBadge = badge('muted', '주말');
+    else if (en.isHoliday) statusBadge = badge('holiday', '공휴일');
+    else if (ded > 0) statusBadge = badge('accent', '적용됨');
+    else if (en.recordedHours > 0 || en.status) statusBadge = (en.isPast || en.isToday) ? badge('ok', '완료') : badge('muted', '예정');
+    else if (en.isPast){ statusBadge = badge('warn', '미기록'); rowClass.push('missing'); }
+    else if (en.isToday) statusBadge = badge('accent', '진행중');
+    else statusBadge = badge('muted', '예정');
 
-    const partialLabel = partialCheckoutHours !== null
-      ? `(예상 ${base.toFixed(2)} = ${effectiveArrival}~${state.partialCheckoutOverrides[en.dateStr]})`
-      : `(예상 ${base.toFixed(2)} = 출근~언플러그전 ${partialMorningHours.toFixed(2)} + 언플러그 ${en.recordedHours})`;
-    const hoursCell = isAssumed
-      ? `<span class="proj">${ded>0 ? `${base.toFixed(2)}→${effective.toFixed(2)}` : (isPartialNote ? partialLabel : todayCheckoutHours !== null ? `(예상 ${base.toFixed(2)} = ${en.start||'?'}~${effectiveTodayCheckout})` : en.isToday ? `(진행중, 예상 ${base.toFixed(2)})` : `(예상 ${base.toFixed(2)})`)}</span>`
-      : (ded > 0 ? `${base.toFixed(1)}→${effective.toFixed(1)}` : (en.recordedHours || (en.recordedHours===0 && (en.isWeekend||en.isHoliday)) ? base.toFixed(2) : '-'));
+    const noteParts = [];
+    if (en.status) noteParts.push(cleanNote(en.status).replace(/\d+\.\d{4,}/g, n => Number(n).toFixed(3)));
+    if (en.isHoliday) noteParts.push(HOLIDAYS[en.dateStr]);
+    if (en.isLaborDay) noteParts.push('근로자의 날');
+    const noteHtml = noteParts.length ? `<div class="note">${escapeHtml(noteParts.join(' · '))}</div>` : '';
 
-    const startCell = (isPartialNote && !en.start)
-      ? timeSelectHTML('arrival', en.dateStr, effectiveArrival)
-      : (en.start || '-');
+    // 근무시간 칸: 큰 숫자 + (예상이면 '예상' 표시) + 계산 근거 한 줄
+    // 계산 근거(sub)는 마우스를 올리면 툴팁으로, 터치 기기에선 숫자 아래에 줄바꿈해서 표시
+    let hoursTip = '';
+    const hoursBlock = (val, sub, projected) => {
+      hoursTip = sub || '';
+      return `<div class="h-main num">${val}${projected ? '<em>예상</em>' : ''}</div>${sub ? `<div class="h-sub">${escapeHtml(sub)}</div>` : ''}`;
+    };
+    let hoursHtml;
+    if (isOff) hoursHtml = dash;
+    else if (ded > 0) hoursHtml = hoursBlock(effective.toFixed(2), `${base.toFixed(2)} − ${ded}h (${planTypeLabel(ded)})`, isAssumed);
+    else if (isPartialNote){
+      hoursHtml = hoursBlock(base.toFixed(2), partialCheckoutHours !== null
+        ? `${effectiveArrival}~${state.partialCheckoutOverrides[en.dateStr]}`
+        : `출근 이후 ${partialMorningHours.toFixed(2)}\n+ ${kw} ${en.recordedHours.toFixed(2)}`, true);
+    }
+    else if (todayCheckoutHours !== null) hoursHtml = hoursBlock(base.toFixed(2), `${shortTime(en.start) || '?'}~${effectiveTodayCheckout}`, true);
+    else if (isAssumed) hoursHtml = hoursBlock(base.toFixed(2), '', true);
+    else if (en.recordedHours > 0) hoursHtml = hoursBlock(base.toFixed(2), '', false);
+    else hoursHtml = dash;
 
-    const checkoutCell = isPartialNote
-      ? timeSelectHTML('partialCheckout', en.dateStr, state.partialCheckoutOverrides[en.dateStr] || blockEndTime || '18:00')
-      : (en.isToday && !en.end)
-        ? timeSelectHTML('checkout', en.dateStr, state.todayCheckoutTime || '18:00')
-        : (en.end || '-');
+    // 언플러그/패스 날: 아직 안 지난 날만 시간 조정 가능, 지난(완료된) 날은 글자로만 표시
+    const partialEnd = state.partialCheckoutOverrides[en.dateStr] || blockEndTime || '18:00';
+    const startHtml = (isPartialNote && !en.start)
+      ? (en.isPast ? `<span class="num">${effectiveArrival}</span>` : timeSelectHTML('arrival', en.dateStr, effectiveArrival))
+      : (en.start ? `<span class="num">${escapeHtml(shortTime(en.start))}</span>` : dash);
+    const endHtml = isPartialNote
+      ? (en.isPast ? `<span class="num">${partialEnd}</span>` : timeSelectHTML('partialCheckout', en.dateStr, partialEnd))
+      : (todayCheckoutHours !== null && !isOff)
+        ? timeSelectHTML('checkout', en.dateStr, effectiveTodayCheckout)
+        : (en.end ? `<span class="num">${escapeHtml(shortTime(en.end))}</span>` : dash);
 
-    const planBadgeLabel = ded === 4 ? '반차' : ded === 2 ? '패스' : ded > 0 ? '계획' : '';
-    const planBadge = ded > 0 ? `<span class="plan-badge">${planBadgeLabel} -${ded}h</span>` : '';
-    const unplugBadge = isPartialNote ? `<span class="unplug-tag">${partialKeywordMatch[0]}</span>` : '';
-    const todayFlag = en.isToday ? '<span class="today-badge">오늘</span>' : '';
-    const dateLabel = `${en.dateStr}(${en.weekday})` + planBadge;
+    // 왼쪽 표시: 오늘 → 출근/재택 → 언플러그 순서
+    const isTelework = !!en.status && /재택/.test(en.status);
+    const isLeaveNote = !!en.status && /휴가|연차/.test(en.status);
+    const isOfficeDay = !isOff && !isTelework && !isLeaveNote;
+    const tags = [];
+    if (en.isToday) tags.push('<span class="tag tag-today">오늘</span>');
+    const isHalfLeave = !!en.status && /반차/.test(en.status);
+    const doneCls = '';
+    const pastCls = en.isPast ? ' done' : '';   // 완료된 연차·언플러그는 연한 색
+    if (isTelework) tags.push(`<span class="tag tag-remote${doneCls}">재택</span>`);
+    else if (isLeaveNote) tags.push(`<span class="tag tag-leave${pastCls}">${/연차/.test(en.status) || !/휴가/.test(en.status) ? '연차' : '휴가'}</span>`);
+    else if (isOfficeDay) tags.push(`<span class="tag tag-office${doneCls}">출근</span>`);
+    if (isHalfLeave && !isLeaveNote) tags.push(`<span class="tag tag-leave${pastCls}">반차</span>`);
+    if (isPartialNote) tags.push(`<span class="tag tag-unplug${pastCls}">${kw}</span>`);
+    const tagsHtml = tags.join('');
 
-    const flagCellContent = (todayFlag && unplugBadge) ? `${todayFlag}<br>${unplugBadge}` : `${todayFlag}${unplugBadge}`;
-    rowsHtml.push(`<tr class="${rowClass.join(' ')}">
-      <td class="flag-cell">${flagCellContent}</td>
-      <td class="date-cell">${dateLabel}</td>
-      <td>${startCell}</td><td>${checkoutCell}</td>
-      <td>${hoursCell}</td>
-      <td style="color:${diff < 0 ? 'var(--warn)' : 'var(--ok)'}">${diff >= 0 ? '+' + diff.toFixed(2) : diff.toFixed(2)}</td>
-      <td class="status">${statusBadge}${noteText ? `<div class="note">${noteText}</div>` : ''}</td>
+    const planBadge = ded > 0 ? `<span class="plan-badge">${planTypeLabel(ded)} −${ded}h</span>` : '';
+    const dateHtml = (tags.length ? `<span class="m-flags">${tagsHtml}</span>` : '') +
+      `<span class="date-main">${md(en.dateStr)}<span class="date-wd">(${escapeHtml(en.weekday)})</span></span>${planBadge}`;
+
+    const rd = Math.round(diff * 100);
+    const diffHtml = `<span class="diff num ${isOff ? 'muted' : (rd < 0 ? 'neg' : 'pos')}">${fmtSigned(diff)}</span>`;
+
+    const noteText = noteParts.join(' · ');
+    rowsHtml.push(`<tr class="${rowClass.join(' ')}" data-date="${en.dateStr}">
+      <td class="c-flag"><div class="flags">${tagsHtml}</div></td>
+      <td class="c-date">${dateHtml}</td>
+      <td class="c-in" data-label="출근">${startHtml}</td>
+      <td class="c-out" data-label="퇴근">${endHtml}</td>
+      <td class="c-hours" data-label="근무"${hoursTip ? ` data-tip="${escapeHtml(hoursTip)}"` : ''}>${hoursHtml}</td>
+      <td class="c-diff">${diffHtml}</td>
+      <td class="c-status${(!noteHtml && /완료|예정/.test(statusBadge)) ? ' plain-done' : ''}"${noteText ? ` data-tip="${escapeHtml(noteText)}"` : ''}>${statusBadge}${noteHtml ? MEMO_ICON : MEMO_ICON.replace('class="memo-ico"', 'class="memo-ico ghost"')}${noteHtml}</td>
     </tr>`);
   });
 
-  document.getElementById('tbody').innerHTML = rowsHtml.join('');
+  $('tbody').innerHTML = rowsHtml.join('');
 
+  /* ----- 상단 요약 ----- */
   const remainToday = state.targetHours - cumActualToDate;
   const pct = state.targetHours > 0 ? Math.min(100, Math.max(0, (cumActualToDate / state.targetHours) * 100)) : 0;
-
-  document.getElementById('cTarget').textContent = `${state.targetHours.toFixed(0)}시간`;
-  document.getElementById('cActual').textContent = `${cumActualToDate.toFixed(2)}시간`;
-  document.getElementById('cRemain').innerHTML = remainToday > 0
-    ? `${minutesPart(remainToday)}`
-    : `<span style="color:var(--ok)">✓ ${minutesPart(remainToday)} 초과</span>`;
-  document.getElementById('progressLabel').textContent = `진행률 (${cumActualToDate.toFixed(1)}h / ${state.targetHours}h)`;
-  document.getElementById('progressPct').textContent = `${pct.toFixed(0)}%`;
-  document.getElementById('barFill').style.width = `${pct}%`;
-
-  const missingNotice = document.getElementById('missingNotice');
-  if (missing.length){
-    missingNotice.style.display = 'block';
-    missingNotice.textContent = `⚠ 근태 기록이 없는 지난 평일이 ${missing.length}일 있습니다: ${missing.join(', ')}`;
+  if (remainToday > 0){
+    $('heroLabel').textContent = '목표까지 남은 시간';
+    $('cRemain').textContent = minutesPart(remainToday);
   } else {
-    missingNotice.style.display = 'none';
+    $('heroLabel').textContent = '이번 달 목표를 이미 채웠어요';
+    $('cRemain').textContent = `+${minutesPart(remainToday)}`;
   }
+  $('barFill').style.width = `${pct}%`;
+  $('progressLabel').textContent = `${cumActualToDate.toFixed(2)}h / ${state.targetHours}h`;
+  $('progressPct').textContent = `${pct.toFixed(0)}%`;
 
-  const mandatoryDescEl = document.getElementById('mandatoryStartDesc');
-  if (upcomingPartialDates.length) {
-    const lines = upcomingPartialDates
-      .map(d => `${d.dateLabel} [${d.keyword}] ${timeSelectHTML('arrival', d.rawDate, d.arrival)} 출근예상`)
-      .join(', ');
-    mandatoryDescEl.innerHTML = `🚘 ${lines}`;
-  } else {
-    mandatoryDescEl.innerHTML = `🚘 언플러그/패스 날짜의 기본 출근시각: ${timeSelectHTML('default', '', state.mandatoryDefaultStart)}`;
-  }
-
-  // ---- simulation summary ----
   const monthEndDiff = cumEffective - cumTarget;
-  document.getElementById('simProjected').textContent = `${cumEffective.toFixed(2)}시간 / 목표 ${cumTarget}시간`;
-  const diffEl = document.getElementById('simDiff');
-  const hintEl = document.getElementById('simHint');
-  if (monthEndDiff >= 0){
-    diffEl.textContent = `${minutesPart(monthEndDiff)} 여유`;
-    diffEl.className = 'big ok';
+  const meOk = monthEndDiff > -0.005;
+  const meText = meOk ? `+${minutesPart(monthEndDiff)} 여유` : `${minutesPart(monthEndDiff)} 부족`;
+  const meEl = $('heroMonthEnd');
+  meEl.textContent = meText;
+  meEl.className = 'v num ' + (meOk ? 'ok-text' : 'bad-text');
+  $('heroMonthEndSub').textContent = `${cumEffective.toFixed(2)}h / 목표 ${cumTarget}h` + (plans.length ? ` · 계획 ${plans.length}건 반영` : '');
+
+  $('cTarget').textContent = `${state.targetHours}h`;
+  $('cActual').textContent = `${cumActualToDate.toFixed(2)}h`;
+  $('cDaysLeft').textContent = `${daysLeft}일`;
+  const paceEl = $('cPace');
+  if (paceDiff === null){ paceEl.textContent = '–'; paceEl.className = 'v num'; }
+  else {
+    paceEl.textContent = `${fmtSigned(paceDiff)}h`;
+    paceEl.className = 'v num ' + (Math.round(paceDiff * 100) < 0 ? 'bad-text' : 'ok-text');
+  }
+
+  // 오늘 몇 시 이후에 퇴근하면 월말 목표를 맞추는지
+  const heroToday = $('heroToday');
+  if (todayInfo){
+    const neededBase = todayInfo.effective - monthEndDiff + todayInfo.ded;
+    let html;
+    let suggested = null;
+    if (neededBase <= 0){
+      html = `<div class="txt">${CLOCK_ICON}<span>남은 날을 표의 예상대로만 근무해도 월말 목표는 충분해요.</span></div>`;
+    } else {
+      const t = earliestCheckoutFor(todayInfo.startHour, neededBase);
+      if (t === null){
+        html = `<div class="txt">${CLOCK_ICON}<span>오늘 하루로는 부족한 시간을 다 채우기 어려워요. 남은 날에 나눠서 채워 주세요.</span></div>`;
+      } else {
+        const ts = hourToHHMMCeil5(t);
+        html = `<div class="txt">${CLOCK_ICON}<span>월말 목표를 맞추려면 오늘 <span class="time num">${ts}</span> 이후 퇴근하면 돼요<small>다른 날은 표의 예상 시간대로 근무한다고 가정했어요</small></span></div>`;
+        suggested = ts;
+      }
+    }
+    // 버튼으로 바꾼 퇴근시각(또는 저장돼서 다시 불러온 퇴근시각)이 있으면 같은 자리에서 바뀐 내용 + 되돌리기
+    let undo = (state.checkoutUndo && state.todayCheckoutTime === state.checkoutUndo.to) ? state.checkoutUndo : null;
+    if (!undo && state.todayCheckoutTime && state.todayCheckoutTime !== '18:00' && (!suggested || suggested === effectiveTodayCheckout)){
+      undo = { from: null, fromLabel: '18:00', to: state.todayCheckoutTime };
+    }
+    if (undo){
+      html += `<div class="changed"><span class="num">✓ 퇴근 ${undo.fromLabel} → ${undo.to}</span><button type="button" class="undo" data-undo-checkout="${undo.from || ''}">되돌리기</button></div>`;
+    } else if (suggested && suggested !== effectiveTodayCheckout){
+      html += `<button type="button" class="set" data-set-checkout="${suggested}">퇴근 ${suggested}로 설정</button>`;
+    }
+    heroToday.innerHTML = html;
+    heroToday.hidden = false;
+  } else {
+    heroToday.hidden = true;
+  }
+
+  const mn = $('missingNotice');
+  if (missing.length){
+    mn.hidden = false;
+    mn.innerHTML = `<span class="ico">!</span><span>근태 기록이 없는 지난 평일이 ${missing.length}일 있어요: ${missing.map(d => fmtDate(d)).join(', ')}</span>`;
+  } else {
+    mn.hidden = true;
+  }
+
+  // 언플러그/패스 출근 예상 안내 (시간을 바로 바꿀 수 있음)
+  const mEl = $('mandatoryStartDesc');
+  if (upcomingPartialDates.length){
+    mEl.innerHTML = upcomingPartialDates
+      .map(d => `🚘 <b>${d.dateLabel}</b> [${d.keyword}] ${timeSelectHTML('arrival', d.rawDate, d.arrival)} 출근예상`)
+      .join('<br>');
+  } else {
+    mEl.innerHTML = `🚘 출근한 시간 ${timeSelectHTML('default', '', state.mandatoryDefaultStart)}`;
+  }
+
+  /* ----- 계획 시뮬레이션 결과 ----- */
+  $('simProjected').textContent = `${cumEffective.toFixed(2)}h / 목표 ${cumTarget}h`;
+  const diffEl = $('simDiff');
+  const hintEl = $('simHint');
+  diffEl.textContent = meText;
+  diffEl.className = 'sim-big num ' + (meOk ? 'ok-text' : 'bad-text');
+  if (meOk){
     hintEl.className = 'hint ok';
     hintEl.innerHTML = plans.length
       ? `이 계획대로 써도 월말에 <span class="hl">${minutesPart(monthEndDiff)}</span> 여유가 있어요. 목표시간을 채우는 데 문제 없어요.`
-      : `지금까지 기록 + 남은 평일을 8시간씩 채운다고 가정하면 <span class="hl">${minutesPart(monthEndDiff)}</span> 여유가 있어요.`;
+      : `지금까지 기록 + 남은 평일을 8시간씩 채운다고 하면 <span class="hl">${minutesPart(monthEndDiff)}</span> 여유가 있어요.`;
   } else {
-    diffEl.textContent = `${minutesPart(monthEndDiff)} 부족`;
-    diffEl.className = 'big bad';
     hintEl.className = 'hint';
     if (futureAdjustableDays > 0){
       const extraPerDay = Math.abs(monthEndDiff) / futureAdjustableDays;
-      hintEl.innerHTML = `이 계획대로면 <span class="hl">${minutesPart(monthEndDiff)}</span>이 부족해요. 계획을 넣지 않은 남은 평일 <span class="hl">${futureAdjustableDays}일</span> 동안 하루 평균 <span class="hl">${minutesPart(extraPerDay)}</span>씩 더 일하면 메울 수 있어요.`;
+      hintEl.innerHTML = `이대로면 <span class="hl">${minutesPart(monthEndDiff)}</span>이 부족해요. 계획을 넣지 않은 남은 평일 <span class="hl">${futureAdjustableDays}일</span> 동안 하루 평균 <span class="hl">${minutesPart(extraPerDay)}</span>씩 더 일하면 메울 수 있어요.`;
     } else {
-      hintEl.innerHTML = `이 계획대로면 <span class="hl">${minutesPart(monthEndDiff)}</span>이 부족한데, 추가로 시간을 채울 평일이 남아있지 않아요. 반차/패스 계획을 줄이거나 다른 날 초과근무가 필요해요.`;
+      hintEl.innerHTML = `이대로면 <span class="hl">${minutesPart(monthEndDiff)}</span>이 부족한데, 더 채울 수 있는 평일이 남아있지 않아요. 반차·패스 계획을 줄이거나 다른 날 더 일해야 해요.`;
     }
   }
 }
+
+/* ---------- 샘플 데이터 (파일 없이 둘러보기) ---------- */
+function buildSampleRows(){
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  const dim = new Date(y, m + 1, 0).getDate();
+  const td = now.getDate();
+  const ym = `${y}-${pad2(m + 1)}`;
+  const isOffDay = d => { const dow = new Date(y, m, d).getDay(); return dow === 0 || dow === 6 || !!HOLIDAYS[`${ym}-${pad2(d)}`]; };
+  let unplugDay = null, cnt = 0;
+  for (let d = td + 1; d <= dim; d++){ if (isOffDay(d)) continue; if (++cnt === 2){ unplugDay = d; break; } }
+  const rows = [['일자', '출근', '퇴근', '근무시간', '상태']];
+  for (let d = 1; d <= dim; d++){
+    const dow = new Date(y, m, d).getDay();
+    const label = `${ym}-${pad2(d)}(${WD[dow]})`;
+    if (isOffDay(d)){ rows.push([label, '', '', '', '']); continue; }
+    if (d === unplugDay){ rows.push([label, '', '', 2 / 24, '언플러그데이(2h) 14:00 ~ 16:00']); continue; }
+    if (dow === 3 && d !== td){ rows.push([label, '', '', 8 / 24, '재택C(8hr) 09:00 ~ 18:00']); continue; }
+    if (dow === 1 && d < td && d > 7 && d <= 14){ rows.push([label, '', '', 8 / 24, '연차(8hr)']); continue; }
+    if (d < td){
+      const sm = (d * 7) % 30, eh = 18 + (d % 3 === 0 ? 1 : 0), em = (d * 13) % 60;
+      const hrs = workHoursBetween(9 + sm / 60, eh + em / 60);
+      rows.push([label, `09:${pad2(sm)}:00`, `${pad2(eh)}:${pad2(em)}:00`, hrs / 24, '']);
+      continue;
+    }
+    if (d === td){ rows.push([label, '09:52:00', '', '', '']); continue; }
+    rows.push([label, '', '', '', '']);
+  }
+  return rows;
+}
+function loadSample(){ parseAndBuildState(buildSampleRows(), { fileName: '샘플 데이터', isSample: true }); }
+
+// 링크 끝에 #sample 을 붙이면 바로 샘플로 열림
+if (location.hash === '#sample') loadSample();
 </script>
 </body>
 </html>
